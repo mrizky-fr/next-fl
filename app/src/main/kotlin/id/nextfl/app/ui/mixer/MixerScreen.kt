@@ -1,5 +1,9 @@
 package id.nextfl.app.ui.mixer
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -133,7 +137,7 @@ private fun AddTrackStrip(onAdd: () -> Unit) {
             .background(Palette.Surface)
             .clickable(role = Role.Button, onClickLabel = "Tambah track", onClick = onAdd),
         contentAlignment = Alignment.Center,
-    ) { Text("+", color = Palette.TextMuted, fontSize = 22.sp) }
+    ) { Icon(Icons.Rounded.Add, contentDescription = null, tint = Palette.TextMuted, modifier = Modifier.size(22.dp)) }
 }
 
 @Composable

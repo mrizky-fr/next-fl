@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Movie
@@ -54,7 +57,7 @@ fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
         if (text.toDoubleOrNull() != bpm) text = EditorViewModel.formatBpm(bpm)
     }
     val taps = remember { mutableStateListOf<Long>() }
-    ModalDialog("Tempo project", onDismiss, width = 320.dp) {
+    ModalDialog("Tempo project", onDismiss, width = 280.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconAction(Icons.Rounded.Remove, "Kurangi", { onChange(bpm - 1) }, variant = ButtonVariant.SOLID)
             TextInput(
@@ -68,7 +71,7 @@ fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
             )
             IconAction(Icons.Rounded.Add, "Tambah", { onChange(bpm + 1) }, variant = ButtonVariant.SOLID)
         }
-        FlatButton("TAP TEMPO", variant = ButtonVariant.ACCENT, modifier = Modifier.fillMaxWidth(), onClick = {
+        FlatButton("TAP TEMPO", Icons.Rounded.TouchApp, variant = ButtonVariant.ACCENT, modifier = Modifier.fillMaxWidth(), onClick = {
             val now = System.currentTimeMillis()
             if (taps.isNotEmpty() && now - taps.last() > TAP_RESET_MS) taps.clear()
             taps.add(now)
@@ -96,16 +99,16 @@ private fun ExportOption(icon: ImageVector, title: String, description: String, 
             .clip(Shape)
             .background(Palette.Card)
             .clickable(enabled = onClick != null, role = Role.Button) { onClick?.invoke() }
-            .padding(12.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.size(40.dp).clip(Shape).background(Palette.Accent), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = Palette.White)
+        Box(Modifier.size(32.dp).clip(Shape).background(Palette.Accent), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = Palette.White, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = TextStyles.Title)
+                Text(title, style = TextStyles.Title.copy(fontSize = 13.sp))
                 badge?.let {
                     Text(
                         it.uppercase(),
@@ -127,8 +130,8 @@ fun NewProjectDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = "Proyek baru",
         onDismiss = onDismiss,
         actions = {
-            FlatButton("Batal", onDismiss, variant = ButtonVariant.GHOST)
-            FlatButton("Mulai baru", onConfirm, variant = ButtonVariant.DANGER)
+            FlatButton("Batal", Icons.Rounded.Close, onDismiss, variant = ButtonVariant.GHOST)
+            FlatButton("Mulai baru", Icons.Rounded.RestartAlt, onConfirm, variant = ButtonVariant.DANGER)
         },
     ) {
         Text(

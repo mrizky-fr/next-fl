@@ -1,5 +1,8 @@
 package id.nextfl.app.ui.visual
 
+import androidx.compose.material.icons.rounded.CropSquare
+import androidx.compose.material.icons.rounded.CropPortrait
+import androidx.compose.material.icons.rounded.Crop169
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -23,6 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Pause
@@ -134,7 +139,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             Text("Logo bulat, ring spektrum, partikel dan komet berasap yang bergerak mengikuti beat.", style = TextStyles.Caption)
         }
         PanelSection("Rasio") {
-            SegmentedControl(AspectRatio.entries, settings.aspect, { it.label }, { aspect -> update { it.copy(aspect = aspect) } })
+            SegmentedControl(AspectRatio.entries, settings.aspect, { it.label }, { aspect -> update { it.copy(aspect = aspect) } }, icon = ::aspectIcon)
         }
         PanelSection("Gambar") {
             ImagePickerRow(vm, VisualImage.LOGO, "Logo DJ", logo, RoundedCornerShape(Dimens.Radius))
@@ -174,9 +179,15 @@ private fun ImagePickerRow(vm: EditorViewModel, kind: VisualImage, label: String
             Text(label, style = TextStyles.Body)
             Text(if (bitmap == null) "Belum dipilih" else "${bitmap.width}×${bitmap.height}", style = TextStyles.Caption)
         }
-        FlatButton(if (bitmap == null) "Pilih" else "Ganti", {
+        FlatButton(if (bitmap == null) "Pilih" else "Ganti", Icons.Rounded.AddPhotoAlternate, {
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         })
-        if (bitmap != null) FlatButton("Hapus", { vm.removeImage(kind) }, variant = ButtonVariant.GHOST)
+        if (bitmap != null) FlatButton("Hapus", Icons.Rounded.Delete, { vm.removeImage(kind) }, variant = ButtonVariant.GHOST)
     }
+}
+
+private fun aspectIcon(aspect: AspectRatio) = when (aspect) {
+    AspectRatio.WIDE -> Icons.Rounded.Crop169
+    AspectRatio.PORTRAIT -> Icons.Rounded.CropPortrait
+    AspectRatio.SQUARE -> Icons.Rounded.CropSquare
 }

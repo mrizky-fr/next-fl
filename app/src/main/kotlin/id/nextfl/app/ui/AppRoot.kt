@@ -1,5 +1,8 @@
 package id.nextfl.app.ui
 
+import id.nextfl.app.ui.components.FlatButton
+import id.nextfl.app.ui.components.ButtonVariant
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -160,13 +163,7 @@ private fun ToastCard(toast: Toast, onDismiss: () -> Unit) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
         Text(toast.message, style = TextStyles.Body, modifier = Modifier.weight(1f))
         toast.action?.let { action ->
-            Text(
-                action.label,
-                color = Palette.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(CardShape).background(Palette.Accent).clickable(role = Role.Button) { action.run(); onDismiss() }.padding(horizontal = 10.dp, vertical = 6.dp),
-            )
+            FlatButton(action.label, Icons.Rounded.Share, { action.run(); onDismiss() }, variant = ButtonVariant.ACCENT)
         }
     }
 }

@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.GridOn
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -31,6 +33,8 @@ import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material.icons.rounded.ZoomOut
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -52,6 +56,8 @@ import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
 import id.nextfl.app.ui.components.Scaled
+import id.nextfl.app.ui.topbar.BAR_ICON_SCALE
+import id.nextfl.app.ui.topbar.BAR_LABEL_SCALE
 import id.nextfl.app.ui.components.SegmentedControl
 import id.nextfl.app.ui.components.ToolbarGap
 import id.nextfl.app.ui.theme.Dimens
@@ -92,7 +98,7 @@ fun PlaylistScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing
 @Composable
 private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: String?, onImport: () -> Unit) {
     val density = LocalDensity.current.density
-    Scaled(BOTTOM_BAR_SCALE) {
+    Scaled(BOTTOM_BAR_SCALE, iconScale = BAR_ICON_SCALE, labelScale = BAR_LABEL_SCALE) {
     Row(
         modifier = Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +112,7 @@ private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: St
         IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
         IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
         ToolbarGap()
-        Text("SNAP", style = TextStyles.Label)
+        Icon(Icons.Rounded.GridOn, contentDescription = "Snap", tint = Palette.TextMuted, modifier = Modifier.size(18.dp * BAR_ICON_SCALE))
         SegmentedControl(SnapMode.entries, ui.snap, { it.label }, { mode -> vm.updateUi { it.copy(snap = mode) } })
         ToolbarGap()
         IconAction(Icons.Rounded.ZoomOut, "Perkecil", { vm.viewport.zoomAround(0f, 1 / ZOOM_STEP, density) })
@@ -136,7 +142,7 @@ private fun LibraryPanel(vm: EditorViewModel, assets: List<AudioAsset>, onImport
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             items(assets, key = { it.id }) { asset -> LibraryRow(asset, { vm.placeAsset(asset.id) }, { vm.removeAsset(asset.id) }) }
         }
-        FlatButton("Import audio", onImport, Modifier.fillMaxWidth().padding(10.dp), variant = ButtonVariant.ACCENT)
+        FlatButton("Import audio", Icons.Rounded.UploadFile, onImport, Modifier.fillMaxWidth().padding(10.dp), variant = ButtonVariant.ACCENT)
     }
 }
 

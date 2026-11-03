@@ -39,6 +39,10 @@ enum class ButtonVariant { GHOST, SOLID, ACCENT, DANGER }
 // Buttons are 25% smaller app-wide
 val LocalControlScale = compositionLocalOf { 0.75f }
 
+// Extra icon and label scale
+val LocalIconScale = compositionLocalOf { 1f }
+val LocalLabelScale = compositionLocalOf { 1f }
+
 private val Shape = RoundedCornerShape(Dimens.Radius)
 
 private fun variantColors(variant: ButtonVariant, active: Boolean): Pair<Color, Color> = when {
@@ -62,6 +66,8 @@ fun IconAction(
 ) {
     val (background, tint) = variantColors(variant, active)
     val s = LocalControlScale.current
+    val iconSize = 18.dp * s * LocalIconScale.current
+    val labelSize = 12.sp * s * LocalLabelScale.current
     Row(
         modifier = modifier
             .sizeIn(minWidth = Dimens.Control * s, minHeight = Dimens.Control * s)
@@ -73,8 +79,8 @@ fun IconAction(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp * s, Alignment.CenterHorizontally),
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(18.dp * s))
-        if (showLabel) Text(label, color = tint, fontSize = 12.sp * s, fontWeight = FontWeight.Medium, maxLines = 1)
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(iconSize))
+        if (showLabel) Text(label, color = tint, fontSize = labelSize, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -89,6 +95,8 @@ fun <T> SegmentedControl(
     showLabels: Boolean = true,
 ) {
     val s = LocalControlScale.current
+    val iconSize = 16.dp * s * LocalIconScale.current
+    val labelSize = 11.sp * s * LocalLabelScale.current
     Row(
         modifier = modifier.clip(Shape).background(Palette.Well).padding(2.dp * s),
         horizontalArrangement = Arrangement.spacedBy(2.dp * s),
@@ -106,9 +114,9 @@ fun <T> SegmentedControl(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp * s),
             ) {
-                icon?.let { Icon(it(option), contentDescription = label(option), tint = tint, modifier = Modifier.size(16.dp * s)) }
+                icon?.let { Icon(it(option), contentDescription = label(option), tint = tint, modifier = Modifier.size(iconSize)) }
                 if (showLabels || icon == null) {
-                    Text(label(option), color = tint, fontSize = 11.sp * s, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(label(option), color = tint, fontSize = labelSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
             }
         }
@@ -174,8 +182,16 @@ fun LcdBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     ) { content() }
 }
 
+/** Labeled button, icon required. */
 @Composable
-fun FlatButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, variant: ButtonVariant = ButtonVariant.SOLID, enabled: Boolean = true) {
+fun FlatButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    variant: ButtonVariant = ButtonVariant.SOLID,
+    enabled: Boolean = true,
+) {
     val (background, textColor) = when (variant) {
         ButtonVariant.ACCENT -> Palette.Accent to Palette.White
         ButtonVariant.DANGER -> Palette.Danger to Palette.White
@@ -183,17 +199,19 @@ fun FlatButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
         ButtonVariant.GHOST -> Color.Transparent to Palette.TextSecondary
     }
     val s = LocalControlScale.current
-    Box(
+    Row(
         modifier = modifier
             .height(Dimens.Control * s)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(Shape)
             .background(background)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 14.dp * s),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 10.dp * s),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp * s, Alignment.CenterHorizontally),
     ) {
-        Text(text, color = textColor, fontSize = 12.sp * s, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(16.dp * s * LocalIconScale.current))
+        Text(text, color = textColor, fontSize = 12.sp * s * LocalLabelScale.current, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

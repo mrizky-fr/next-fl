@@ -1,5 +1,6 @@
 package id.nextfl.app.ui.playlist
 
+import id.nextfl.app.ui.components.IconAction
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -61,13 +64,7 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("TRACKS", style = TextStyles.Label, modifier = Modifier.weight(1f))
-            Text(
-                "+ Track",
-                color = Palette.White,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clip(RoundedCornerShape(Dimens.Radius)).clickable(role = Role.Button, onClick = vm::addTrack).padding(4.dp),
-            )
+            IconAction(Icons.Rounded.Add, "Track", vm::addTrack, showLabel = true)
         }
         Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             Column(Modifier.offset { IntOffset(0, -vm.viewport.scrollY.roundToInt()) }) {
@@ -144,8 +141,8 @@ fun TrackEditDialog(vm: EditorViewModel, track: Track, onDismiss: () -> Unit) {
         title = "Edit track",
         onDismiss = onDismiss,
         actions = {
-            FlatButton("Hapus track", { vm.removeTrack(track.id); onDismiss() }, variant = ButtonVariant.DANGER)
-            FlatButton("Simpan", {
+            FlatButton("Hapus track", Icons.Rounded.Delete, { vm.removeTrack(track.id); onDismiss() }, variant = ButtonVariant.DANGER)
+            FlatButton("Simpan", Icons.Rounded.Check, {
                 vm.updateTrack(track.id) { it.copy(name = name.trim().ifEmpty { track.name }.take(40), color = color) }
                 onDismiss()
             }, variant = ButtonVariant.ACCENT)

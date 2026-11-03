@@ -116,12 +116,14 @@ class TimelineGestures(
         }
     }
 
+    // Playhead parks after 5 bars, grid scrolls
     fun followPlayhead(position: Double) {
         if (interacting || width <= 0f) return
-        val x = geometry.timeToX(position, viewport.scrollSeconds, viewport.pixelsPerSecond)
-        if (x > width * FOLLOW_EDGE || x < 0) {
-            viewport.scrollSeconds = (position - width * FOLLOW_LEAD / viewport.pixelsPerSecond).coerceAtLeast(0.0)
-        }
+        val pps = viewport.pixelsPerSecond
+        val barsWidth = Beats.toSeconds(FOLLOW_BARS * Beats.PER_BAR.toDouble(), state.doc.bpm) * pps
+        val anchor = minOf(barsWidth.toFloat(), width * MAX_ANCHOR_SHARE)
+        val x = geometry.timeToX(position, viewport.scrollSeconds, pps) - geometry.metrics.originX
+        if (x > anchor || x < 0f) viewport.scrollSeconds = (position - anchor / pps).coerceAtLeast(0.0)
     }
 
     private fun start(position: Offset): DragMode {
@@ -247,8 +249,8 @@ class TimelineGestures(
     }
 
     private companion object {
-        const val FOLLOW_EDGE = 0.85f
-        const val FOLLOW_LEAD = 0.1f
+        const val FOLLOW_BARS = 5
+        const val MAX_ANCHOR_SHARE = 0.5f
         const val WHEEL_ZOOM = 0.15f
         const val WHEEL_PIXELS = 40f
         const val MIN_FLING = 40f
