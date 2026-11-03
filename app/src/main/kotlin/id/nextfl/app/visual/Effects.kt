@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
@@ -227,78 +228,92 @@ class CometField(private val random: Random = Random(11)) {
     }
 }
 
-/** Mirrored spectrum ring blob. */
+/** Drum-driven spikes at upper corners. */
 class SpectrumRing {
-    private val smoothed = FloatArray(BANDS_USED)
+    private val baseline = FloatArray(LOW_BANDS)
+    private val drive = FloatArray(LOW_BANDS)
     private val radii = FloatArray(POINTS)
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeJoin = Paint.Join.ROUND
+        strokeJoin = Paint.Join.MITER
+        strokeMiter = 8f
     }
     private val path = Path()
 
-    fun update(bands: FloatArray, dt: Float) {
+    // Transients above running average only
+    fun update(bands: FloatArray, kick: Float, dt: Float) {
+        val follow = 1f - exp(-dt / BASELINE_SECONDS)
         val release = exp(-dt * RELEASE_PER_SECOND)
-        for (i in 0 until BANDS_USED) smoothed[i] = max(bands[i], smoothed[i] * release)
-    }
-
-    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float, rotation: Float) {
-        val half = POINTS / 2
-        for (j in 0 until POINTS) {
-            val k = if (j < half) j else POINTS - 1 - j
-            val band = (k * BANDS_USED / half).coerceIn(0, BANDS_USED - 1)
-            val v = neighbourhood(band)
-            radii[j] = radius * (1.03f + v.pow(1.7f) * AMPLITUDE * sensitivity)
+        for (b in 0 until LOW_BANDS) {
+            val level = bands[b]
+            baseline[b] += (level - baseline[b]) * follow
+            val transient = max(0f, level - baseline[b]) / max(MIN_HEADROOM, 1f - baseline[b])
+            val target = min(1f, transient * TRANSIENT_GAIN + kick * KICK_GAIN)
+            drive[b] = max(target, drive[b] * release)
         }
-        buildPath(cx, cy, rotation)
-        fill.color = color
-        fill.alpha = 34
-        canvas.drawPath(path, fill)
-        stroke.color = color
-        stroke.alpha = 50
-        stroke.strokeWidth = radius * 0.06f
-        canvas.drawPath(path, stroke)
-        stroke.alpha = 240
-        stroke.strokeWidth = radius * 0.022f
-        canvas.drawPath(path, stroke)
     }
 
-    private fun neighbourhood(band: Int): Float {
-        var sum = 0f
-        var weight = 0f
-        for (offset in -2..2) {
-            val index = band + offset
-            if (index !in 0 until BANDS_USED) continue
-            val w = 3f - kotlin.math.abs(offset)
-            sum += smoothed[index] * w
-            weight += w
-        }
-        return sum / weight
-    }
-
-    private fun buildPath(cx: Float, cy: Float, rotation: Float) {
+    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float) {
+        for (j in 0 until POINTS) radii[j] = radius * (BASE_SCALE + spike(angleOf(j)) * AMPLITUDE * sensitivity)
         path.reset()
-        fun point(j: Int): Pair<Float, Float> {
-            val angle = -PI.toFloat() / 2 + rotation + j * 2 * PI.toFloat() / POINTS
-            val r = radii[(j + POINTS) % POINTS]
-            return cx + cos(angle) * r to cy + sin(angle) * r
-        }
-        val (sx, sy) = point(0)
-        val (nx, ny) = point(1)
-        path.moveTo((sx + nx) / 2, (sy + ny) / 2)
-        for (j in 1..POINTS) {
-            val (x, y) = point(j)
-            val (x2, y2) = point(j + 1)
-            path.quadTo(x, y, (x + x2) / 2, (y + y2) / 2)
+        for (j in 0 until POINTS) {
+            val angle = angleOf(j)
+            val x = cx + cos(angle) * radii[j]
+            val y = cy + sin(angle) * radii[j]
+            if (j == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         path.close()
+        fill.color = color
+        fill.alpha = 30
+        canvas.drawPath(path, fill)
+        stroke.color = color
+        stroke.alpha = 245
+        stroke.strokeWidth = radius * 0.02f
+        canvas.drawPath(path, stroke)
+    }
+
+    private fun angleOf(index: Int): Float = -PI.toFloat() / 2 + index * 2 * PI.toFloat() / POINTS
+
+    // Sharp per-band peaks inside each lobe
+    private fun spike(angle: Float): Float {
+        val right = lobe(angle, UPPER_RIGHT)
+        val left = lobe(angle, UPPER_LEFT)
+        val weight = max(right.first, left.first)
+        if (weight <= 0f) return 0f
+        val offset = if (right.first >= left.first) right.second else -left.second
+        val cell = (offset + 1f) / 2f * SPIKES
+        val spike = cell.toInt().coerceIn(0, SPIKES - 1)
+        val tip = 1f - abs(cell - spike - 0.5f) * 2f
+        val level = max(drive[spike * 2], drive[spike * 2 + 1])
+        return weight * level.pow(SHARPNESS) * tip.pow(TIP_POWER)
+    }
+
+    // Raised-cosine window and normalized offset
+    private fun lobe(angle: Float, center: Float): Pair<Float, Float> {
+        var delta = angle - center
+        while (delta > PI) delta -= 2 * PI.toFloat()
+        while (delta < -PI) delta += 2 * PI.toFloat()
+        if (abs(delta) >= LOBE_HALF_WIDTH) return 0f to 0f
+        val offset = delta / LOBE_HALF_WIDTH
+        return (0.5f + 0.5f * cos(offset * PI.toFloat())) to offset
     }
 
     private companion object {
-        const val POINTS = 96
-        const val BANDS_USED = 44
-        const val AMPLITUDE = 0.42f
-        const val RELEASE_PER_SECOND = 5f
+        const val POINTS = 360
+        const val LOW_BANDS = 20
+        const val SPIKES = LOW_BANDS / 2
+        const val BASE_SCALE = 1.03f
+        const val AMPLITUDE = 0.55f
+        const val SHARPNESS = 1.4f
+        const val TIP_POWER = 2.2f
+        const val BASELINE_SECONDS = 0.8f
+        const val RELEASE_PER_SECOND = 9f
+        const val MIN_HEADROOM = 0.08f
+        const val TRANSIENT_GAIN = 2.2f
+        const val KICK_GAIN = 0.35f
+        const val LOBE_HALF_WIDTH = 0.6f
+        val UPPER_RIGHT = (-PI / 4).toFloat()
+        val UPPER_LEFT = (-3 * PI / 4).toFloat()
     }
 }

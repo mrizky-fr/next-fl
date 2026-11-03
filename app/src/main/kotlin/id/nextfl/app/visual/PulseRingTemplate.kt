@@ -103,7 +103,6 @@ class PulseRingTemplate(typeface: Typeface) {
     private var backgroundImage: Bitmap? = null
     private var shake = 0f
     private var flash = 0f
-    private var rotation = 0f
 
     fun setImages(background: Bitmap?, logoImage: Bitmap?) {
         backgroundImage = background
@@ -130,8 +129,8 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         comets.draw(canvas, sprite, particleColor, unit)
 
-        ring.update(frame.bands, dt)
-        ring.draw(canvas, cx, cy, radius, ringColor, settings.sensitivity, rotation)
+        ring.update(frame.bands, frame.kick, dt)
+        ring.draw(canvas, cx, cy, radius, ringColor, settings.sensitivity)
         logo.draw(canvas, cx, cy, radius * (1f + frame.kick * 0.05f * settings.sensitivity), ringColor)
         drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
 
@@ -145,7 +144,6 @@ class PulseRingTemplate(typeface: Typeface) {
         if (frame.beat && settings.shake) shake = max(shake, frame.beatStrength)
         shake *= exp(-dt * SHAKE_DECAY)
         flash = max(flash * exp(-dt * FLASH_DECAY), if (frame.beat) frame.beatStrength * FLASH_AMOUNT else 0f)
-        rotation += dt * (ROTATION_SPEED + frame.energy * 0.4f)
     }
 
     private fun drawTitle(canvas: Canvas, text: String, x: Float, y: Float, unit: Float) {
@@ -162,6 +160,5 @@ class PulseRingTemplate(typeface: Typeface) {
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f
         const val COMET_COUNT = 6
-        const val ROTATION_SPEED = 0.05f
     }
 }
