@@ -107,7 +107,7 @@ private fun AspectFit(aspect: AspectRatio, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
+fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
     val context = LocalContext.current
     val template = remember { PulseRingTemplate(Fonts.bold(context)) }
     LaunchedEffect(background, logo) { template.setImages(background, logo) }

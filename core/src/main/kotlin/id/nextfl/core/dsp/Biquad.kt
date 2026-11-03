@@ -93,8 +93,8 @@ class StereoBiquad {
         z1L = 0f; z2L = 0f; z1R = 0f; z2R = 0f
     }
 
-    fun process(left: FloatArray, right: FloatArray, count: Int) {
-        for (i in 0 until count) {
+    fun process(left: FloatArray, right: FloatArray, offset: Int, count: Int) {
+        for (i in offset until offset + count) {
             val xl = left[i]
             val yl = b0 * xl + z1L
             z1L = b1 * xl - a1 * yl + z2L

@@ -50,6 +50,7 @@ import id.nextfl.app.ui.theme.Dimens
 import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
 import id.nextfl.app.ui.topbar.TopBar
+import id.nextfl.app.ui.visual.SplitScreen
 import id.nextfl.app.ui.visual.VisualScreen
 
 private val CardShape = RoundedCornerShape(Dimens.Radius)
@@ -81,6 +82,7 @@ private fun Editor(vm: EditorViewModel) {
                 AppView.PLAYLIST -> PlaylistScreen(vm, state, ui, playing)
                 AppView.MIXER -> MixerScreen(vm, state)
                 AppView.VISUAL -> VisualScreen(vm, ui, playing)
+                AppView.SPLIT -> SplitScreen(vm, state, ui, playing)
             }
         }
     }

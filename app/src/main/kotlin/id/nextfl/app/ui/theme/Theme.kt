@@ -12,6 +12,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.nextfl.app.R
@@ -54,6 +56,9 @@ val Inter = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold),
 )
 
+/** Centers glyphs in line box. */
+val CenteredLines = LineHeightStyle(alignment = LineHeightStyle.Alignment.Center, trim = LineHeightStyle.Trim.Both)
+
 object TextStyles {
     private const val TABULAR = "tnum"
     val Lcd = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Palette.White, fontFeatureSettings = TABULAR)
@@ -66,7 +71,8 @@ object TextStyles {
 
 private fun interTypography(): Typography {
     val base = Typography()
-    fun TextStyle.inter() = copy(fontFamily = Inter)
+    // Natural line height keeps labels centered
+    fun TextStyle.inter() = copy(fontFamily = Inter, lineHeight = TextUnit.Unspecified, lineHeightStyle = CenteredLines)
     return base.copy(
         displayLarge = base.displayLarge.inter(),
         displayMedium = base.displayMedium.inter(),

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VerticalSplit
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -109,6 +110,7 @@ private fun viewIcon(view: AppView) = when (view) {
     AppView.PLAYLIST -> Icons.AutoMirrored.Rounded.QueueMusic
     AppView.MIXER -> Icons.Rounded.Tune
     AppView.VISUAL -> Icons.Rounded.AutoAwesome
+    AppView.SPLIT -> Icons.Rounded.VerticalSplit
 }
 
 @Composable
