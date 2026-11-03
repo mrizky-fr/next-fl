@@ -45,6 +45,7 @@ import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.ColorSwatches
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.LocalControlScale
+import id.nextfl.app.ui.components.buttonLabelSize
 import id.nextfl.app.ui.components.ModalDialog
 import id.nextfl.app.ui.components.TextInput
 import id.nextfl.app.ui.theme.Dimens
@@ -123,13 +124,13 @@ fun SmallToggle(label: String, active: Boolean, activeColor: Color, onClick: () 
     val s = LocalControlScale.current
     Box(
         modifier = Modifier
-            .size(width = 24.dp * s, height = 20.dp * s)
+            .size(Dimens.Control * s)
             .clip(RoundedCornerShape(Dimens.RadiusSmall))
             .background(if (active) activeColor else Palette.Well)
             .clickable(role = Role.Checkbox, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (active) Palette.Bg else Palette.TextSecondary, fontSize = 10.sp * s, fontWeight = FontWeight.Bold)
+        Text(label, color = if (active) Palette.Bg else Palette.TextSecondary, fontSize = buttonLabelSize(), fontWeight = FontWeight.Bold)
     }
 }
 

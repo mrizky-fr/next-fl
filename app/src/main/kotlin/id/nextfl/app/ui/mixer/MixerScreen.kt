@@ -62,7 +62,7 @@ fun MixerScreen(vm: EditorViewModel, state: EditorState) {
 }
 
 private val STRIP_HEADER = 150.dp
-private val STRIP_FOOTER = 22.dp
+private val STRIP_FOOTER = 30.dp
 
 @Composable
 private fun StripFrame(selected: Boolean, onClick: (() -> Unit)?, content: @Composable ColumnScope.() -> Unit) {

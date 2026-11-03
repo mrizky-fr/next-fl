@@ -36,12 +36,17 @@ import id.nextfl.app.ui.theme.TextStyles
 
 enum class ButtonVariant { GHOST, SOLID, ACCENT, DANGER }
 
-// Buttons are 25% smaller app-wide
-val LocalControlScale = compositionLocalOf { 0.75f }
+// Every button matches "+ Audio"
+const val BUTTON_SCALE = 0.8f
+val LocalControlScale = compositionLocalOf { BUTTON_SCALE }
+val LocalIconScale = compositionLocalOf { 1.25f }
+val LocalLabelScale = compositionLocalOf { 1.15f }
 
-// Extra icon and label scale
-val LocalIconScale = compositionLocalOf { 1f }
-val LocalLabelScale = compositionLocalOf { 1f }
+@Composable
+fun buttonIconSize() = 18.dp * LocalControlScale.current * LocalIconScale.current
+
+@Composable
+fun buttonLabelSize() = 12.sp * LocalControlScale.current * LocalLabelScale.current
 
 private val Shape = RoundedCornerShape(Dimens.Radius)
 
@@ -66,8 +71,8 @@ fun IconAction(
 ) {
     val (background, tint) = variantColors(variant, active)
     val s = LocalControlScale.current
-    val iconSize = 18.dp * s * LocalIconScale.current
-    val labelSize = 12.sp * s * LocalLabelScale.current
+    val iconSize = buttonIconSize()
+    val labelSize = buttonLabelSize()
     Row(
         modifier = modifier
             .sizeIn(minWidth = Dimens.Control * s, minHeight = Dimens.Control * s)
@@ -80,7 +85,7 @@ fun IconAction(
         horizontalArrangement = Arrangement.spacedBy(6.dp * s, Alignment.CenterHorizontally),
     ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(iconSize))
-        if (showLabel) Text(label, color = tint, fontSize = labelSize, fontWeight = FontWeight.Medium, maxLines = 1)
+        if (showLabel) Text(label, color = tint, fontSize = labelSize, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -95,8 +100,8 @@ fun <T> SegmentedControl(
     showLabels: Boolean = true,
 ) {
     val s = LocalControlScale.current
-    val iconSize = 16.dp * s * LocalIconScale.current
-    val labelSize = 11.sp * s * LocalLabelScale.current
+    val iconSize = buttonIconSize()
+    val labelSize = buttonLabelSize()
     Row(
         modifier = modifier.clip(Shape).background(Palette.Well).padding(2.dp * s),
         horizontalArrangement = Arrangement.spacedBy(2.dp * s),
@@ -106,17 +111,17 @@ fun <T> SegmentedControl(
             val tint = if (isSelected) Palette.White else Palette.TextSecondary
             Row(
                 modifier = Modifier
-                    .height(30.dp * s)
+                    .height((Dimens.Control - 4.dp) * s)
                     .clip(RoundedCornerShape(Dimens.RadiusSmall))
                     .background(if (isSelected) Palette.Accent else Color.Transparent)
                     .clickable(role = Role.RadioButton) { onSelect(option) }
-                    .padding(horizontal = 10.dp * s),
+                    .padding(horizontal = 8.dp * s),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp * s),
             ) {
                 icon?.let { Icon(it(option), contentDescription = label(option), tint = tint, modifier = Modifier.size(iconSize)) }
                 if (showLabels || icon == null) {
-                    Text(label(option), color = tint, fontSize = labelSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(label(option), color = tint, fontSize = labelSize, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
         }
@@ -206,12 +211,12 @@ fun FlatButton(
             .clip(Shape)
             .background(background)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 10.dp * s),
+            .padding(horizontal = 8.dp * s),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp * s, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(6.dp * s, Alignment.CenterHorizontally),
     ) {
-        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(16.dp * s * LocalIconScale.current))
-        Text(text, color = textColor, fontSize = 12.sp * s * LocalLabelScale.current, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(buttonIconSize()))
+        Text(text, color = textColor, fontSize = buttonLabelSize(), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

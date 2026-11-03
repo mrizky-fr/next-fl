@@ -56,8 +56,7 @@ import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
 import id.nextfl.app.ui.components.Scaled
-import id.nextfl.app.ui.topbar.BAR_ICON_SCALE
-import id.nextfl.app.ui.topbar.BAR_LABEL_SCALE
+import id.nextfl.app.ui.components.buttonIconSize
 import id.nextfl.app.ui.components.SegmentedControl
 import id.nextfl.app.ui.components.ToolbarGap
 import id.nextfl.app.ui.theme.Dimens
@@ -98,7 +97,7 @@ fun PlaylistScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing
 @Composable
 private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: String?, onImport: () -> Unit) {
     val density = LocalDensity.current.density
-    Scaled(BOTTOM_BAR_SCALE, iconScale = BAR_ICON_SCALE, labelScale = BAR_LABEL_SCALE) {
+    Scaled(BOTTOM_BAR_SCALE) {
     Row(
         modifier = Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -112,7 +111,7 @@ private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: St
         IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
         IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
         ToolbarGap()
-        Icon(Icons.Rounded.GridOn, contentDescription = "Snap", tint = Palette.TextMuted, modifier = Modifier.size(18.dp * BAR_ICON_SCALE))
+        Icon(Icons.Rounded.GridOn, contentDescription = "Snap", tint = Palette.TextMuted, modifier = Modifier.size(buttonIconSize()))
         SegmentedControl(SnapMode.entries, ui.snap, { it.label }, { mode -> vm.updateUi { it.copy(snap = mode) } })
         ToolbarGap()
         IconAction(Icons.Rounded.ZoomOut, "Perkecil", { vm.viewport.zoomAround(0f, 1 / ZOOM_STEP, density) })

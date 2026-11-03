@@ -61,13 +61,11 @@ private enum class TopDialog { BPM, EXPORT, PROJECT }
 
 // Compact header: 25% smaller
 private const val TOP_BAR_SCALE = 0.75f
-const val BAR_ICON_SCALE = 1.25f
-const val BAR_LABEL_SCALE = 1.15f
 
 @Composable
 fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, canRedo: Boolean, playing: Boolean) {
     var dialog by remember { mutableStateOf<TopDialog?>(null) }
-    Scaled(TOP_BAR_SCALE, iconScale = BAR_ICON_SCALE, labelScale = BAR_LABEL_SCALE) {
+    Scaled(TOP_BAR_SCALE) {
     Row(
         modifier = Modifier.fillMaxWidth().height(Dimens.TopBarHeight).background(Palette.Surface).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
