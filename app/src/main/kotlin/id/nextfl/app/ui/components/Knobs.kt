@@ -111,6 +111,8 @@ fun rememberFrameTick(active: Boolean = true): State<Long> {
     return tick
 }
 
+private const val DISABLED_ALPHA = 0.4f
+
 @Composable
 fun Knob(
     label: String,
@@ -259,10 +261,11 @@ fun ValueSlider(
     onChange: (Float) -> Unit,
     format: (Float) -> String,
     origin: Float = range.start,
+    enabled: Boolean = true,
 ) {
     val currentRange by rememberUpdatedState(range)
     val emit by rememberUpdatedState(onChange)
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().alpha(if (enabled) 1f else DISABLED_ALPHA), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth()) {
             Text(label, style = TextStyles.Body, modifier = Modifier.weight(1f))
             Text(format(value), style = TextStyles.LcdSmall)
@@ -271,7 +274,8 @@ fun ValueSlider(
             Modifier
                 .fillMaxWidth()
                 .height(24.dp)
-                .pointerInput(Unit) {
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         fun apply(x: Float) {
@@ -304,3 +308,71 @@ fun ValueSlider(
         }
     }
 }
+
+/** Vertical fader for graphic EQ. */
+@Composable
+fun VerticalSlider(
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    origin: Float = range.start,
+    enabled: Boolean = true,
+) {
+    val currentRange by rememberUpdatedState(range)
+    val emit by rememberUpdatedState(onChange)
+    Canvas(
+        modifier
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    fun apply(y: Float) {
+                        val p = 1f - (y / size.height).coerceIn(0f, 1f)
+                        emit(currentRange.start + p * (currentRange.endInclusive - currentRange.start))
+                    }
+                    apply(down.position.y)
+                    down.consume()
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        apply(change.position.y)
+                        change.consume()
+                    }
+                }
+            },
+    ) {
+        fun norm(v: Float) = ((v - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+        val p = norm(value)
+        val from = norm(origin)
+        val trackWidth = 4.dp.toPx()
+        val x = center.x - trackWidth / 2
+        drawRect(Palette.Well, Offset(x, 0f), Size(trackWidth, size.height))
+        val top = size.height * (1 - maxOf(p, from))
+        val bottom = size.height * (1 - minOf(p, from))
+        drawRect(Palette.Accent, Offset(x, top), Size(trackWidth, bottom - top))
+        val thumbWidth = 16.dp.toPx()
+        val thumbHeight = 8.dp.toPx()
+        val thumbY = (size.height * (1 - p) - thumbHeight / 2).coerceIn(0f, size.height - thumbHeight)
+        drawRoundRect(Palette.White, Offset(center.x - thumbWidth / 2, thumbY), Size(thumbWidth, thumbHeight), CornerRadius(2.dp.toPx()))
+    }
+}
+
+/** Horizontal peak meter, dB scale. */
+@Composable
+fun HorizontalMeter(peak: () -> Float, modifier: Modifier = Modifier) {
+    val tick by rememberFrameTick()
+    val state = remember { MeterState() }
+    Canvas(modifier.fillMaxWidth().height(6.dp)) {
+        state.update(peak(), tick)
+        drawRect(Palette.Well)
+        val clipping = state.holdRatio > CLIP_RATIO
+        drawRect(if (clipping) Palette.Danger else Palette.Accent, Offset.Zero, Size(size.width * state.levelRatio, size.height))
+        val holdX = (size.width * state.holdRatio).coerceAtMost(size.width - 2.dp.toPx())
+        drawRect(if (clipping) Palette.Danger else Palette.White, Offset(holdX, 0f), Size(2.dp.toPx(), size.height))
+    }
+}
+
+/** Meter position 0..1 for dB. */
+fun meterRatio(db: Float): Float = (db.coerceIn(MeterState.FLOOR, MeterState.CEIL) - MeterState.FLOOR) / (MeterState.CEIL - MeterState.FLOOR)

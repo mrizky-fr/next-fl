@@ -1,7 +1,5 @@
 package id.nextfl.core.engine
 
-import id.nextfl.core.dsp.Equalizer
-import id.nextfl.core.dsp.Reverb
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -9,8 +7,7 @@ import kotlin.math.max
 class TrackProcessor(sampleRate: Int, maxBlock: Int) {
     val left = FloatArray(maxBlock)
     val right = FloatArray(maxBlock)
-    private val equalizer = Equalizer(sampleRate)
-    private val reverb = Reverb(sampleRate)
+    private val chain = FxChainProcessor(sampleRate)
     private var gainL = 0f
     private var gainR = 0f
 
@@ -25,10 +22,7 @@ class TrackProcessor(sampleRate: Int, maxBlock: Int) {
     }
 
     fun process(params: TrackParams, frames: Int) {
-        equalizer.configure(params.eq)
-        equalizer.process(left, right, frames)
-        reverb.configure(params.reverb)
-        reverb.process(left, right, frames)
+        chain.process(params.fx, left, right, frames)
         applyGain(params, frames)
     }
 

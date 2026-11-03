@@ -1,5 +1,8 @@
 package id.nextfl.app.editor
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import java.util.concurrent.Executors
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -24,9 +27,8 @@ import id.nextfl.core.engine.SourceResolver
 import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.Defaults
-import id.nextfl.core.model.EqSettings
+import id.nextfl.core.model.FxChain
 import id.nextfl.core.model.ProjectDoc
-import id.nextfl.core.model.ReverbSettings
 import id.nextfl.core.model.Track
 import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.pcm.MappedPcmSource
@@ -115,11 +117,18 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     fun updateTrack(trackId: String, coalesce: String? = null, transform: (Track) -> Track) =
         store.change(coalesce) { TrackOps.update(it, trackId, transform) }
 
-    fun setEq(trackId: String, field: String, transform: (EqSettings) -> EqSettings) =
-        updateTrack(trackId, "eq:$trackId:$field") { it.copy(eq = transform(it.eq)) }
+    // Mixer FX; null key = own undo step
+    fun updateFx(target: FxTarget, key: String?, transform: (FxChain) -> FxChain) = when (target) {
+        FxTarget.Master -> store.change(key?.let { "mfx:$it" }) { it.copy(masterFx = transform(it.masterFx)) }
+        is FxTarget.Channel -> updateTrack(target.trackId, key?.let { "fx:${target.trackId}:$it" }) { it.withFx(transform(it.fx)) }
+    }
 
-    fun setReverb(trackId: String, field: String, transform: (ReverbSettings) -> ReverbSettings) =
-        updateTrack(trackId, "rev:$trackId:$field") { it.copy(reverb = transform(it.reverb)) }
+    var fxClipboard by mutableStateOf<Any?>(null)
+        private set
+
+    fun copyFx(settings: Any) {
+        fxClipboard = settings
+    }
 
     fun setBpm(bpm: Double) = store.change("bpm") {
         it.copy(bpm = (Math.round(bpm.coerceIn(ProjectDoc.MIN_BPM, ProjectDoc.MAX_BPM) * 100) / 100.0))
@@ -226,6 +235,8 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     /** Level heard now, per track. */
     fun trackLevel(trackId: String): Float = app.playback.audibleTrackPeak(trackId)
+
+    fun masterLevel(): Float = app.playback.audibleMasterPeak()
 
     // Export
     fun exportWav() = launchExport { graph, track ->

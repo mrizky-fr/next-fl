@@ -16,30 +16,58 @@ object Sanitize {
         return doc.copy(
             bpm = doc.bpm.coerceIn(ProjectDoc.MIN_BPM, ProjectDoc.MAX_BPM),
             masterDb = doc.masterDb.coerceIn(AudioMath.MIN_DB, 6f),
+            masterFx = fx(doc.masterFx),
             tracks = tracks,
             clips = clips,
         )
     }
 
-    private fun track(track: Track): Track = track.copy(
+    private fun track(track: Track): Track = track.withFx(fx(track.fx)).copy(
         name = track.name.take(MAX_NAME),
         color = Defaults.migrateTrackColor(track.color),
         volumeDb = track.volumeDb.coerceIn(AudioMath.MIN_DB, 6f),
         pan = track.pan.coerceIn(-1f, 1f),
-        eq = track.eq.copy(
-            lowCut = track.eq.lowCut.coerceIn(20f, 1000f),
-            lowGain = track.eq.lowGain.coerceIn(-18f, 18f),
-            midGain = track.eq.midGain.coerceIn(-18f, 18f),
-            midFreq = track.eq.midFreq.coerceIn(150f, 8000f),
-            highGain = track.eq.highGain.coerceIn(-18f, 18f),
-            highCut = track.eq.highCut.coerceIn(1000f, 20_000f),
+    )
+
+    fun fx(chain: FxChain): FxChain = chain.copy(
+        eq = chain.eq.copy(
+            lowCut = chain.eq.lowCut.coerceIn(FxRanges.EQ_LOW_CUT),
+            lowGain = chain.eq.lowGain.coerceIn(FxRanges.EQ_GAIN),
+            midGain = chain.eq.midGain.coerceIn(FxRanges.EQ_GAIN),
+            midFreq = chain.eq.midFreq.coerceIn(FxRanges.EQ_MID_FREQ),
+            highGain = chain.eq.highGain.coerceIn(FxRanges.EQ_GAIN),
+            highCut = chain.eq.highCut.coerceIn(FxRanges.EQ_HIGH_CUT),
         ),
-        reverb = track.reverb.copy(
-            mix = track.reverb.mix.coerceIn(0f, 1f),
-            decay = track.reverb.decay.coerceIn(0.3f, 8f),
-            preDelay = track.reverb.preDelay.coerceIn(0f, 0.25f),
-            tone = track.reverb.tone.coerceIn(1000f, 18_000f),
+        stereoizer = chain.stereoizer.copy(
+            strength = chain.stereoizer.strength.coerceIn(FxRanges.UNIT),
+            timbre = chain.stereoizer.timbre.coerceIn(FxRanges.UNIT),
+            focus = chain.stereoizer.focus.coerceIn(FxRanges.UNIT),
+            lrDelay = chain.stereoizer.lrDelay.coerceIn(FxRanges.BIPOLAR),
+            pan = chain.stereoizer.pan.coerceIn(FxRanges.BIPOLAR),
         ),
+        reverb = reverb(chain.reverb),
+        graphicEq = chain.graphicEq.copy(
+            gains = List(GraphicEqSettings.BANDS) { band -> chain.graphicEq.gains.getOrElse(band) { 0f }.coerceIn(FxRanges.GRAPHIC_GAIN) },
+        ),
+        leveller = chain.leveller.copy(
+            gainDb = chain.leveller.gainDb.coerceIn(FxRanges.LEVELLER_GAIN),
+            pan = chain.leveller.pan.coerceIn(FxRanges.BIPOLAR),
+        ),
+    )
+
+    private fun reverb(settings: ReverbSettings): ReverbSettings = settings.copy(
+        mix = settings.mix.coerceIn(FxRanges.UNIT),
+        decay = settings.decay.coerceIn(FxRanges.REVERB_DECAY),
+        preDelay = settings.preDelay.coerceIn(FxRanges.REVERB_PRE_DELAY),
+        tone = settings.tone.coerceIn(FxRanges.REVERB_TONE),
+        damping = settings.damping.coerceIn(FxRanges.UNIT),
+        earlyReflections = settings.earlyReflections.coerceIn(FxRanges.UNIT),
+        roomSize = settings.roomSize.coerceIn(FxRanges.UNIT),
+        lowCut = settings.lowCut.coerceIn(FxRanges.REVERB_LOW_CUT),
+        diffusion = settings.diffusion.coerceIn(FxRanges.UNIT),
+        width = settings.width.coerceIn(FxRanges.UNIT),
+        dryDb = settings.dryDb.coerceIn(FxRanges.REVERB_TRIM_DB),
+        wetDb = settings.wetDb.coerceIn(FxRanges.REVERB_TRIM_DB),
     )
 
     private fun clip(clip: Clip): Clip = clip.copy(

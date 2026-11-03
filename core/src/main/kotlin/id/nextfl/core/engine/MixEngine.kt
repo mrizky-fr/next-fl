@@ -25,6 +25,8 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private val masterL = FloatArray(maxBlock)
     private val masterR = FloatArray(maxBlock)
     private val limiter = Limiter(sampleRate)
+    private val masterChain = FxChainProcessor(sampleRate)
+    private val masterHistory = PeakHistory()
     private var masterGain = 1f
     val tap = MasterTap()
 
@@ -53,6 +55,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         segments = longArrayOf(0L, songFrame)
         tap.reset()
         processors.values.forEach { it.history.reset() }
+        masterHistory.reset()
     }
 
     fun songFrameAtOutput(output: Long): Long {
@@ -66,6 +69,8 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
 
     /** Track peak heard at output frame. */
     fun trackPeakAt(trackId: String, output: Long): Float = processors[trackId]?.history?.at(output) ?: 0f
+
+    fun masterPeakAt(output: Long): Float = masterHistory.at(output)
 
     fun renderInterleaved(out: FloatArray, frames: Int) {
         renderStereo(masterL, masterR, frames, copy = false)
@@ -89,6 +94,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         }
         tap.write(masterL, masterR, frames, outputFrame)
         processors.values.forEach { it.history.write(outputFrame, frames, it.peak) }
+        masterHistory.write(outputFrame, frames, masterPeak)
         songFrame += frames
         outputFrame += frames
     }
@@ -137,6 +143,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
                 masterR[i] += processor.right[i]
             }
         }
+        masterChain.process(current.masterFx, masterL, masterR, frames)
         val step = (current.masterGain - masterGain) / frames
         var peak = 0f
         for (i in 0 until frames) {

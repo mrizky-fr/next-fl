@@ -47,3 +47,10 @@ class TimelineViewport {
         const val MAX_DP_PER_SECOND = 400f
     }
 }
+
+/** Mixer channel whose FX are shown. */
+sealed interface FxTarget {
+    data object Master : FxTarget
+
+    data class Channel(val trackId: String) : FxTarget
+}

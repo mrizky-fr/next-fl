@@ -1,11 +1,18 @@
 package id.nextfl.app.ui.mixer
 
+import id.nextfl.core.model.ProjectDoc
+import id.nextfl.core.model.FxChain
+import id.nextfl.core.model.EqSettings
+import id.nextfl.app.editor.FxTarget
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -47,17 +54,24 @@ import id.nextfl.app.ui.theme.TextStyles
 
 @Composable
 fun MixerScreen(vm: EditorViewModel, state: EditorState) {
+    var masterSelected by rememberSaveable { mutableStateOf(false) }
     val selected = state.doc.tracks.find { it.id == state.selectedTrackId } ?: state.doc.tracks.firstOrNull()
+    val target = if (masterSelected || selected == null) FxTarget.Master else FxTarget.Channel(selected.id)
     Row(Modifier.fillMaxSize().background(Palette.Bg)) {
         Row(
             modifier = Modifier.weight(1f).fillMaxHeight().horizontalScroll(rememberScrollState()).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            MasterStrip(vm, state.doc.masterDb)
-            state.doc.tracks.forEach { track -> ChannelStrip(vm, track, track.id == selected?.id) }
+            MasterStrip(vm, state.doc, target == FxTarget.Master) { masterSelected = true }
+            state.doc.tracks.forEach { track ->
+                ChannelStrip(vm, track, target == FxTarget.Channel(track.id)) {
+                    masterSelected = false
+                    vm.selectTrack(track.id)
+                }
+            }
             AddTrackStrip(vm::addTrack)
         }
-        if (selected != null) FxPanel(vm, selected)
+        FxPanel(vm, state.doc, target)
     }
 }
 
@@ -81,26 +95,24 @@ private fun StripFrame(selected: Boolean, onClick: (() -> Unit)?, content: @Comp
 }
 
 @Composable
-private fun MasterStrip(vm: EditorViewModel, masterDb: Float) {
-    StripFrame(selected = false, onClick = null) {
-        Column(Modifier.height(STRIP_HEADER), horizontalAlignment = Alignment.CenterHorizontally) {
+private fun MasterStrip(vm: EditorViewModel, doc: ProjectDoc, selected: Boolean, onSelect: () -> Unit) {
+    StripFrame(selected, onClick = onSelect) {
+        Column(Modifier.height(STRIP_HEADER), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("MASTER", style = TextStyles.Label.copy(color = Palette.White), modifier = Modifier.padding(top = 4.dp))
+            FxBadges(doc.masterFx)
         }
-        MeterFader(Modifier.weight(1f), { vm.engine.masterPeak }, masterDb, "Volume master") { vm.setMasterDb(it) }
+        MeterFader(Modifier.weight(1f), { vm.engine.masterPeak }, doc.masterDb, "Volume master") { vm.setMasterDb(it) }
         Box(Modifier.height(STRIP_FOOTER))
     }
 }
 
 @Composable
-private fun ChannelStrip(vm: EditorViewModel, track: Track, selected: Boolean) {
-    StripFrame(selected, onClick = { vm.selectTrack(track.id) }) {
+private fun ChannelStrip(vm: EditorViewModel, track: Track, selected: Boolean, onSelect: () -> Unit) {
+    StripFrame(selected, onClick = onSelect) {
         Column(Modifier.height(STRIP_HEADER), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(Dimens.RadiusSmall)).background(Color(track.color)))
             Text(track.name, style = TextStyles.Body.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                FxBadge("EQ", track.eq.enabled && hasEqChange(track))
-                FxBadge("REV", track.reverb.enabled && track.reverb.mix > 0f)
-            }
+            FxBadges(track.fx)
             Knob("Pan", track.pan, -1f..1f, 0f, { v -> vm.updateTrack(track.id, "pan:${track.id}") { it.copy(pan = v) } }, ::formatPan, bipolar = true, size = 32.dp)
         }
         MeterFader(Modifier.weight(1f), { vm.engine.trackPeak(track.id) }, track.volumeDb, "Volume ${track.name}") { db ->
@@ -154,7 +166,23 @@ private fun FxBadge(label: String, active: Boolean) {
     )
 }
 
-private fun hasEqChange(track: Track): Boolean = with(track.eq) {
+// Lit badge = module audibly active
+@Composable
+private fun FxBadges(chain: FxChain) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            FxBadge("EQ", chain.eq.enabled && hasEqChange(chain.eq))
+            FxBadge("ST", chain.stereoizer.enabled)
+            FxBadge("REV", chain.reverb.enabled && chain.reverb.mix > 0f)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            FxBadge("GEQ", chain.graphicEq.enabled && chain.graphicEq.gains.any { it != 0f })
+            FxBadge("LV", chain.leveller.enabled && (chain.leveller.gainDb != 0f || chain.leveller.pan != 0f))
+        }
+    }
+}
+
+private fun hasEqChange(eq: EqSettings): Boolean = with(eq) {
     lowCut > 20.5f || lowGain != 0f || midGain != 0f || highGain != 0f || highCut < 19_900f
 }
 

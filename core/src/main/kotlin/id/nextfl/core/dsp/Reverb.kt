@@ -1,6 +1,7 @@
 package id.nextfl.core.dsp
 
 import id.nextfl.core.model.ReverbSettings
+import id.nextfl.core.util.AudioMath
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -12,7 +13,7 @@ import kotlin.math.sqrt
 
 private const val DENORMAL = 1e-18f
 
-private class Allpass(size: Int, private val gain: Float) {
+private class Allpass(size: Int, var gain: Float) {
     private val buffer = FloatArray(size)
     private var index = 0
 
@@ -45,12 +46,17 @@ private class DelayLine(capacity: Int) {
     }
 }
 
-/** Smooth FDN reverb with diffusion. */
+/** FDN reverb, early reflections, room size. */
 class Reverb(private val sampleRate: Int) {
     private val scale = sampleRate / 44_100.0
     private val diffusers = DIFFUSER_LENGTHS.indices.map { Allpass(scaled(DIFFUSER_LENGTHS[it]), DIFFUSER_GAINS[it]) }
-    private val lengths = FloatArray(LINES) { scaled(LINE_LENGTHS[it]).toFloat() }
-    private val lines = Array(LINES) { DelayLine(lengths[it].toInt() + MOD_DEPTH * 2 + 4) }
+    private val baseLengths = FloatArray(LINES) { scaled(LINE_LENGTHS[it]).toFloat() }
+    private val lengths = baseLengths.copyOf()
+    private val targetLengths = baseLengths.copyOf()
+    private val lines = Array(LINES) { DelayLine((baseLengths[it] * MAX_ROOM_SCALE).toInt() + MOD_DEPTH * 2 + 4) }
+    private val early = DelayLine((EARLY_TAP_SECONDS.max() * MAX_ROOM_SCALE * sampleRate).toInt() + 4)
+    private val earlyTaps = FloatArray(EARLY_TAP_SECONDS.size)
+    private val lengthGlide = (1 - exp(-1.0 / (ROOM_GLIDE_SECONDS * sampleRate))).toFloat()
     private val outputs = FloatArray(LINES)
     private val damped = FloatArray(LINES)
     private val feedback = FloatArray(LINES)
@@ -59,7 +65,7 @@ class Reverb(private val sampleRate: Int) {
     private val lfoStepCos = FloatArray(LINES) { cos(lfoIncrement(it)).toFloat() }
     private val lfoStepSin = FloatArray(LINES) { sin(lfoIncrement(it)).toFloat() }
     private val preDelay = FloatArray((sampleRate * MAX_PRE_DELAY).toInt() + 1)
-    private val lowCutCoefficient = (1 - exp(-2 * PI * LOW_CUT_HZ / sampleRate)).toFloat()
+    private var lowCutCoefficient = (1 - exp(-2 * PI * DEFAULT_LOW_CUT_HZ / sampleRate)).toFloat()
     private val gainSmoothing = (1 - exp(-1.0 / (GAIN_SMOOTH_SECONDS * sampleRate))).toFloat()
     private var preDelayIndex = 0
     private var preDelayFrames = 0
@@ -68,6 +74,8 @@ class Reverb(private val sampleRate: Int) {
     private var toneCoefficient = 0f
     private var toneL = 0f
     private var toneR = 0f
+    private var earlyLevel = 0f
+    private var width = 1f
     private var dryTarget = 1f
     private var wetTarget = 0f
     private var dry = 1f
@@ -77,14 +85,29 @@ class Reverb(private val sampleRate: Int) {
 
     fun configure(settings: ReverbSettings) {
         if (settings == current) return
+        val first = current == null
         current = settings
-        for (k in 0 until LINES) feedback[k] = lineFeedback(lengths[k] / sampleRate, settings.decay.toDouble())
-        damping = (1 - (settings.tone - 1000f) / 17_000f).coerceIn(0f, 1f) * MAX_DAMPING
+        val room = roomScale(settings.roomSize)
+        for (k in 0 until LINES) {
+            targetLengths[k] = baseLengths[k] * room
+            if (first) lengths[k] = targetLengths[k]
+            feedback[k] = lineFeedback(targetLengths[k] / sampleRate, settings.decay.toDouble())
+        }
+        for (i in earlyTaps.indices) earlyTaps[i] = (EARLY_TAP_SECONDS[i] * room * sampleRate).toFloat()
+        damping = settings.damping * MAX_DAMPING
         preDelayFrames = (settings.preDelay * sampleRate).roundToInt().coerceIn(0, preDelay.size - 1)
         toneCoefficient = exp(-2 * PI * settings.tone / sampleRate).toFloat()
+        lowCutCoefficient = (1 - exp(-2 * PI * settings.lowCut / sampleRate)).toFloat()
+        val diffusion = settings.diffusion / DEFAULT_DIFFUSION
+        diffusers.forEachIndexed { i, allpass -> allpass.gain = (DIFFUSER_GAINS[i] * diffusion).coerceAtMost(MAX_DIFFUSER_GAIN) }
+        earlyLevel = settings.earlyReflections * EARLY_GAIN
+        width = settings.width
+        // Disabled means clean bypass
         val mix = if (settings.enabled) settings.mix else 0f
-        dryTarget = cos(mix * PI / 2).toFloat()
-        wetTarget = sin(mix * PI / 2).toFloat()
+        val dryTrim = if (settings.enabled) AudioMath.dbToGain(settings.dryDb) else 1f
+        val wetTrim = AudioMath.dbToGain(settings.wetDb)
+        dryTarget = cos(mix * PI / 2).toFloat() * dryTrim
+        wetTarget = sin(mix * PI / 2).toFloat() * wetTrim
     }
 
     val isActive: Boolean get() = wetTarget > 0f || wet > SILENT_GAIN
@@ -92,19 +115,40 @@ class Reverb(private val sampleRate: Int) {
     fun process(left: FloatArray, right: FloatArray, count: Int) {
         if (!isActive) return
         for (i in 0 until count) {
-            val input = diffuse(lowCut(delayed((left[i] + right[i]) * 0.5f)))
+            val source = lowCut(delayed((left[i] + right[i]) * 0.5f))
+            early.write(source)
+            glideRoom()
             readLines()
-            feedLines(input)
-            val wetL = wetLeft()
-            val wetR = wetRight()
+            feedLines(diffuse(source))
+            val wetL = wetLeft() + earlyLeft() * earlyLevel
+            val wetR = wetRight() + earlyRight() * earlyLevel
             toneL = wetL + (toneL - wetL) * toneCoefficient
             toneR = wetR + (toneR - wetR) * toneCoefficient
+            val mid = (toneL + toneR) * 0.5f
+            val side = (toneL - toneR) * 0.5f * width
             dry += (dryTarget - dry) * gainSmoothing
             wet += (wetTarget - wet) * gainSmoothing
-            left[i] = left[i] * dry + toneL * wet * OUTPUT_GAIN
-            right[i] = right[i] * dry + toneR * wet * OUTPUT_GAIN
+            left[i] = left[i] * dry + (mid + side) * wet * OUTPUT_GAIN
+            right[i] = right[i] * dry + (mid - side) * wet * OUTPUT_GAIN
             advanceLfo()
         }
+    }
+
+    // Odd taps left, even right
+    private fun earlyLeft(): Float {
+        var sum = 0f
+        for (i in earlyTaps.indices step 2) sum += early.read(earlyTaps[i]) * EARLY_TAP_GAINS[i]
+        return sum
+    }
+
+    private fun earlyRight(): Float {
+        var sum = 0f
+        for (i in 1 until earlyTaps.size step 2) sum += early.read(earlyTaps[i]) * EARLY_TAP_GAINS[i]
+        return sum
+    }
+
+    private fun glideRoom() {
+        for (k in 0 until LINES) lengths[k] += (targetLengths[k] - lengths[k]) * lengthGlide
     }
 
     private fun diffuse(input: Float): Float {
@@ -165,6 +209,8 @@ class Reverb(private val sampleRate: Int) {
 
     private fun scaled(samples: Int) = (samples * scale).roundToInt().coerceAtLeast(1)
 
+    private fun roomScale(size: Float) = MIN_ROOM_SCALE + size * (MAX_ROOM_SCALE - MIN_ROOM_SCALE)
+
     private fun lfoIncrement(line: Int) = 2 * PI * (LFO_BASE_HZ + line * LFO_SPREAD_HZ) / sampleRate
 
     companion object {
@@ -178,8 +224,18 @@ class Reverb(private val sampleRate: Int) {
         private const val LFO_SPREAD_HZ = 0.083
         private const val RENORMALIZE_EVERY = 4096
         private const val MAX_PRE_DELAY = 0.25
-        private const val LOW_CUT_HZ = 140.0
-        private const val MAX_DAMPING = 0.55f
+        private const val DEFAULT_LOW_CUT_HZ = 140.0
+        private const val MAX_DAMPING = 0.7f
+        private const val DEFAULT_DIFFUSION = 0.7f
+        private const val MAX_DIFFUSER_GAIN = 0.85f
+        private const val MIN_ROOM_SCALE = 0.5f
+        private const val MAX_ROOM_SCALE = 1.5f
+        private const val ROOM_GLIDE_SECONDS = 0.15
+        private const val EARLY_GAIN = 0.5f
+
+        // Moorer-style reflection pattern
+        private val EARLY_TAP_SECONDS = floatArrayOf(0.0043f, 0.0215f, 0.0225f, 0.0268f, 0.0270f, 0.0298f, 0.0458f, 0.0485f, 0.0572f, 0.0587f, 0.0595f, 0.0612f)
+        private val EARLY_TAP_GAINS = floatArrayOf(0.841f, 0.504f, 0.491f, 0.379f, 0.380f, 0.346f, 0.289f, 0.272f, 0.192f, 0.193f, 0.217f, 0.181f)
         private const val INPUT_GAIN = 0.35f
         private const val OUTPUT_GAIN = 0.6f
         private const val GAIN_SMOOTH_SECONDS = 0.03

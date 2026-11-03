@@ -9,7 +9,7 @@ Aplikasi Android untuk mengedit dan me-remix lagu secara sederhana (gaya DAW sep
 - [x] Edit klip — gain, fade in/out, normalize
 - [x] Tempo — BPM project, tap tempo, klip ikut BPM project, speed manual, kunci nada (time-stretch WSOLA)
 - [x] Mixer — volume fader, pan, mute/solo, meter level per track + master (limiter)
-- [x] Efek per track — EQ 5 band (low cut, low shelf, mid, high shelf, high cut) dengan kurva respons, reverb (mix, decay, pre-delay, tone)
+- [x] FX chain di setiap track dan master — Parametric EQ 5 band (kurva respons), Stereoizer (strength, timbre, focus bass mono, delay Haas L/R, pan), Reverb (Main: decay, high damp, mix, early reflections, room size · Tune: pre-delay, low/high cut, diffusion · Mixer: dry, wet, width), Graphic EQ 8 band, Leveller (gain, pan, meter). Tiap modul punya on/off, preset, reset, salin/tempel
 - [x] Template visual "Pulse Ring" — logo DJ + background bisa diganti, ring spektrum, partikel, kilatan garis, goyang saat beat; rasio 16:9, 9:16, 1:1
 - [x] Undo/redo, autosave proyek
 - [x] Export mixdown WAV ke `Music/NextFL` + bagikan
@@ -24,7 +24,7 @@ Aplikasi Android untuk mengedit dan me-remix lagu secara sederhana (gaya DAW sep
 | UI | Jetpack Compose (Material 3 minimal, komponen custom), font Inter |
 | Audio engine | Mixer sendiri di `:core` (Kotlin murni) + `AudioTrack` float |
 | Decode audio | `MediaExtractor` + `MediaCodec`, resampler windowed-sinc |
-| DSP | Biquad EQ, Freeverb, limiter, WSOLA time-stretch, FFT, deteksi BPM & beat |
+| DSP | Biquad EQ, graphic EQ, stereoizer M/S, reverb FDN + early reflections, limiter, WSOLA time-stretch, FFT, deteksi BPM & beat |
 | Penyimpanan | JSON (kotlinx.serialization) + PCM 16-bit di storage aplikasi (memory-mapped) |
 | Build | Gradle 9.8, AGP 9.4, compileSdk 37, minSdk 29 |
 

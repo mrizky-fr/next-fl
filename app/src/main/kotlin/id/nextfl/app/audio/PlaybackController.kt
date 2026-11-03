@@ -115,6 +115,8 @@ class PlaybackController(
 
     fun audibleTrackPeak(trackId: String): Float = if (isPlaying.value) engine.trackPeakAt(trackId, audibleOutputFrame()) else 0f
 
+    fun audibleMasterPeak(): Float = if (isPlaying.value) engine.masterPeakAt(audibleOutputFrame()) else 0f
+
     private suspend fun watchEnd() {
         while (true) {
             delay(END_WATCH_MS)
