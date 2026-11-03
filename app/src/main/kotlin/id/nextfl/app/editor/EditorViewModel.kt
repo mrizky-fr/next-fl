@@ -1,5 +1,13 @@
 package id.nextfl.app.editor
 
+import java.util.concurrent.Executors
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import id.nextfl.app.video.VideoRenderer
+import id.nextfl.app.video.VideoPlan
+import id.nextfl.core.pcm.PcmFileWriter
+import id.nextfl.core.model.AspectRatio
+import id.nextfl.core.engine.RenderGraph
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -217,7 +225,52 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     // Export
-    fun exportWav() {
+    fun exportWav() = launchExport { graph, track ->
+        val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME))
+        val total = OfflineRenderer.totalFrames(graph)
+        withContext(Dispatchers.Default) {
+            WavWriter(app.exporter.openStream(output), AppContainer.SAMPLE_RATE, total).use { writer ->
+                OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender mixdown", it) }, isCancelled = { !isActive })
+            }
+        }
+        output
+    }
+
+    fun exportVideo(aspect: AspectRatio) = launchExport { graph, track ->
+        val mix = app.paths.renderMix
+        try {
+            withContext(Dispatchers.Default) {
+                PcmFileWriter(mix).use { writer ->
+                    OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender audio", it * AUDIO_SHARE) }, isCancelled = { !isActive })
+                }
+            }
+            ensureActive()
+            val plan = withContext(Dispatchers.Default) { VideoPlan.resolve(aspect) }
+            val output = track(app.exporter.createVideo("nextfl-video-${timestamp()}.mp4"))
+            val settings = visualSettings.value
+            val images = background.value to logo.value
+            // GL needs one fixed thread
+            Executors.newSingleThreadExecutor { Thread(it, "video-render") }.asCoroutineDispatcher().use { renderThread ->
+                withContext(renderThread) {
+                    MappedPcmSource(mix, AppContainer.SAMPLE_RATE).use { audio ->
+                        app.exporter.openDescriptor(output).use { descriptor ->
+                            VideoRenderer(plan, audio, settings, images.first, images.second, app.visualTypeface).render(
+                                descriptor.fileDescriptor,
+                                onProgress = { exportBusy("Merender video", AUDIO_SHARE + it * (1 - AUDIO_SHARE)) },
+                                isCancelled = { !isActive },
+                            )
+                        }
+                    }
+                }
+            }
+            output
+        } finally {
+            mix.delete()
+        }
+    }
+
+    // Shared guard, publish and cleanup
+    private fun launchExport(render: suspend CoroutineScope.(RenderGraph, (ExportTarget) -> ExportTarget) -> ExportTarget) {
         if (exportJob?.isActive == true) return
         exportJob = viewModelScope.launch {
             val state = store.current
@@ -226,24 +279,15 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
                 return@launch
             }
             var target: ExportTarget? = null
-            app.messages.busy("Menyiapkan export", 0f, ::cancelExport)
+            exportBusy("Menyiapkan export", 0f)
             try {
                 val resolver = prepareExportSources(state.doc, state.assets)
                 val graph = RenderGraphBuilder.build(state.doc, state.assets, AppContainer.SAMPLE_RATE, resolver)
-                val total = OfflineRenderer.totalFrames(graph)
-                val output = app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME)
-                target = output
-                withContext(Dispatchers.Default) {
-                    WavWriter(output.stream, AppContainer.SAMPLE_RATE, total).use { writer ->
-                        OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { progress ->
-                            app.messages.busy("Merender mixdown", progress, ::cancelExport)
-                        }, isCancelled = { !isActive })
-                    }
-                }
+                val output = render(graph) { created -> created.also { target = it } }
                 ensureActive()
                 app.exporter.publish(output)
-                val share = ToastAction("Bagikan") { app.shareAudio(output.uri) }
-                app.messages.toast("Tersimpan di Music/${MediaExporter.FOLDER}", ToastTone.SUCCESS, share)
+                val share = ToastAction("Bagikan") { app.share(output.uri, output.mimeType) }
+                app.messages.toast("Tersimpan di ${output.location}", ToastTone.SUCCESS, share)
             } catch (cancelled: CancellationException) {
                 target?.let(app.exporter::discard)
                 app.messages.toast("Export dibatalkan")
@@ -258,6 +302,8 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
+    private fun exportBusy(message: String, progress: Float?) = app.messages.busy(message, progress, ::cancelExport)
+
     fun cancelExport() {
         exportJob?.cancel()
     }
@@ -266,7 +312,7 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         for (clip in doc.clips) {
             val rate = clipSpan(clip, assets, doc.bpm).rate
             if (clip.keepPitch && !TimeStretcher.isUnity(rate)) {
-                app.messages.busy("Time-stretch ${clip.name}", null, ::cancelExport)
+                exportBusy("Time-stretch ${clip.name}", null)
                 withContext(Dispatchers.Default) { app.library.ensureStretched(clip.assetId, rate) }
             }
         }
@@ -313,6 +359,7 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     companion object {
         private const val TAG = "EditorViewModel"
+        private const val AUDIO_SHARE = 0.1f
         private const val NORMALIZE_HEADROOM_DB = 0.3f
         private const val MAX_CLIP_GAIN_DB = 24f
         private const val DECODE_SHARE = 0.85f

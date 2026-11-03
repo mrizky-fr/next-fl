@@ -11,6 +11,7 @@ class StoragePaths(filesDir: File, cacheDir: File) {
     private val stretchDir = File(cacheDir, "stretch").apply { mkdirs() }
     private val imagesDir = File(filesDir, "images").apply { mkdirs() }
     val projectFile = File(filesDir, "project.json")
+    val renderMix = File(cacheDir, "render-mix.pcm")
 
     fun asset(assetId: String) = File(assetsDir, "$assetId.pcm")
 

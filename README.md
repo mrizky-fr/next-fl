@@ -13,7 +13,7 @@ Aplikasi Android untuk mengedit dan me-remix lagu secara sederhana (gaya DAW sep
 - [x] Template visual "Pulse Ring" — logo DJ + background bisa diganti, ring spektrum, partikel, kilatan garis, goyang saat beat; rasio 16:9, 9:16, 1:1
 - [x] Undo/redo, autosave proyek
 - [x] Export mixdown WAV ke `Music/NextFL` + bagikan
-- [ ] Export video MP4 dari template visual
+- [x] Export video MP4 dari template visual (pilih rasio 16:9, 9:16, 1:1; 30 fps, H.264 + AAC, bisa dibatalkan)
 - [ ] Versi desktop (Compose Multiplatform)
 
 ## Tech Stack

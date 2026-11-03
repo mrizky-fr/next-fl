@@ -1,5 +1,8 @@
 package id.nextfl.app.ui.topbar
 
+import id.nextfl.core.model.AspectRatio
+import id.nextfl.app.video.VideoPlan
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,11 +32,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.nextfl.app.editor.EditorViewModel
@@ -49,6 +50,9 @@ import id.nextfl.app.ui.theme.TextStyles
 private const val TAP_RESET_MS = 2000L
 private const val MAX_TAPS = 8
 private val Shape = RoundedCornerShape(Dimens.Radius)
+private val RATIO_DIALOG_WIDTH = 360.dp
+private val RATIO_FRAME = 44.dp
+private const val NOMINAL_SHORT_SIDE = 1080
 
 @Composable
 fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
@@ -83,22 +87,73 @@ fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun ExportDialog(onWav: () -> Unit, onDismiss: () -> Unit) {
+fun ExportDialog(onWav: () -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
+    var choosingRatio by remember { mutableStateOf(false) }
+    if (choosingRatio) {
+        VideoRatioDialog(onBack = { choosingRatio = false }, onRender = onVideo, onDismiss = onDismiss)
+        return
+    }
     ModalDialog("Export", onDismiss) {
         ExportOption(Icons.Rounded.GraphicEq, "Audio WAV", "Mixdown semua track dan efek, 16-bit stereo 44.1 kHz.", onWav)
-        ExportOption(Icons.Rounded.Movie, "Video MP4", "Render template visual bersama audio.", null, badge = "Segera")
+        ExportOption(Icons.Rounded.Movie, "Video MP4", "Template NextPlayer bersama audio, 30 fps.") { choosingRatio = true }
+    }
+}
+
+// Render stays locked until picked
+@Composable
+private fun VideoRatioDialog(onBack: () -> Unit, onRender: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
+    var selected by remember { mutableStateOf<AspectRatio?>(null) }
+    ModalDialog(
+        title = "Pilih rasio video",
+        onDismiss = onDismiss,
+        width = RATIO_DIALOG_WIDTH,
+        actions = {
+            FlatButton("Kembali", Icons.AutoMirrored.Rounded.ArrowBack, onBack, variant = ButtonVariant.GHOST)
+            FlatButton("Render", Icons.Rounded.Movie, { selected?.let(onRender) }, variant = ButtonVariant.ACCENT, enabled = selected != null)
+        },
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AspectRatio.entries.forEach { aspect ->
+                RatioOption(aspect, aspect == selected, Modifier.weight(1f)) { selected = aspect }
+            }
+        }
     }
 }
 
 @Composable
-private fun ExportOption(icon: ImageVector, title: String, description: String, onClick: (() -> Unit)?, badge: String? = null) {
+private fun RatioOption(aspect: AspectRatio, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val (width, height) = VideoPlan.frameSize(aspect, NOMINAL_SHORT_SIDE)
+    val ratio = aspect.width.toFloat() / aspect.height
+    Column(
+        modifier = modifier
+            .clip(Shape)
+            .background(if (selected) Palette.Accent else Palette.Card)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(RATIO_FRAME), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .size(if (ratio >= 1) RATIO_FRAME else RATIO_FRAME * ratio, if (ratio >= 1) RATIO_FRAME / ratio else RATIO_FRAME)
+                    .clip(RoundedCornerShape(Dimens.RadiusSmall))
+                    .background(if (selected) Palette.White else Palette.ControlHigh),
+            )
+        }
+        Text(aspect.label, style = TextStyles.Title.copy(fontSize = 13.sp))
+        Text("$width×$height", style = TextStyles.Caption.copy(color = if (selected) Palette.White else Palette.TextSecondary))
+    }
+}
+
+@Composable
+private fun ExportOption(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (onClick == null) 0.5f else 1f)
             .clip(Shape)
             .background(Palette.Card)
-            .clickable(enabled = onClick != null, role = Role.Button) { onClick?.invoke() }
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -107,18 +162,7 @@ private fun ExportOption(icon: ImageVector, title: String, description: String, 
             Icon(icon, contentDescription = null, tint = Palette.White, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = TextStyles.Title.copy(fontSize = 13.sp))
-                badge?.let {
-                    Text(
-                        it.uppercase(),
-                        color = Palette.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(Shape).background(Palette.ControlHigh).padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                }
-            }
+            Text(title, style = TextStyles.Title.copy(fontSize = 13.sp))
             Text(description, style = TextStyles.Caption)
         }
     }
