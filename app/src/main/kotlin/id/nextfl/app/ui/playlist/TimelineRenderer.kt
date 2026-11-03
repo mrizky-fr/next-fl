@@ -32,6 +32,7 @@ class TimelineScene(
     val selectedClipId: String?,
     val selectedTrackId: String?,
     val playhead: Double,
+    val playheadGrabbed: Boolean,
     val snapGuide: Double?,
     val peaks: (String) -> WaveformPeaks?,
     val isStretching: (Clip, Double) -> Boolean,
@@ -231,17 +232,26 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
         }
     }
 
+    // Rounded draggable handle and line
     private fun drawPlayhead(canvas: Canvas, scene: TimelineScene) {
         val x = geometry.timeToX(scene.playhead, scene.scroll, scene.pps)
-        if (x < -10 || x > scene.width + 10) return
-        drawVertical(canvas, scene, scene.playhead, PLAYHEAD, 1.5f)
-        path.reset()
-        path.moveTo(x - 6 * density, 0f)
-        path.lineTo(x + 6 * density, 0f)
-        path.lineTo(x, 9 * density)
-        path.close()
-        fill.color = PLAYHEAD
-        canvas.drawPath(path, fill)
+        if (x < -metrics.playheadGrab || x > scene.width + metrics.playheadGrab) return
+        val color = if (scene.playheadGrabbed) PLAYHEAD_ACTIVE else PLAYHEAD
+        val handleTop = 3 * density
+        val handleBottom = metrics.rulerHeight - 5 * density
+        stroke.color = color
+        stroke.strokeWidth = 2 * density
+        stroke.strokeCap = Paint.Cap.ROUND
+        canvas.drawLine(x, handleBottom, x, scene.height - 2 * density, stroke)
+        stroke.strokeCap = Paint.Cap.BUTT
+        fill.color = color
+        rect.set(x - 6 * density, handleTop, x + 6 * density, handleBottom)
+        canvas.drawRoundRect(rect, 3 * density, 3 * density, fill)
+        fill.color = HANDLE_GRIP
+        val gripTop = handleTop + 5 * density
+        val gripBottom = handleBottom - 5 * density
+        canvas.drawRect(x - 2.5f * density, gripTop, x - 1.5f * density, gripBottom, fill)
+        canvas.drawRect(x + 1.5f * density, gripTop, x + 2.5f * density, gripBottom, fill)
     }
 
     private fun drawVertical(canvas: Canvas, scene: TimelineScene, time: Double, color: Int, widthDp: Float) {
@@ -276,7 +286,9 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
         val RULER = Color.parseColor("#0D0E10")
         val RULER_TEXT = Color.parseColor("#A1A1AA")
         val PLAYHEAD = Color.WHITE
-        val SNAP = Color.parseColor("#6366F1")
+        val PLAYHEAD_ACTIVE = Color.parseColor("#3C8DDB")
+        val HANDLE_GRIP = Color.parseColor("#131517")
+        val SNAP = Color.parseColor("#3C8DDB")
         val SELECTED_OUTLINE = Color.WHITE
         val HANDLE = Color.argb(220, 255, 255, 255)
         val FADE_SHADE = Color.argb(90, 0, 0, 0)

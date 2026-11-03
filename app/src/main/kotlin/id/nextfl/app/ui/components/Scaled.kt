@@ -9,5 +9,10 @@ import androidx.compose.ui.unit.Density
 @Composable
 fun Scaled(scale: Float, content: @Composable () -> Unit) {
     val density = LocalDensity.current
-    CompositionLocalProvider(LocalDensity provides Density(density.density * scale, density.fontScale), content = content)
+    // Bar already scaled; buttons keep size
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density * scale, density.fontScale),
+        LocalControlScale provides 1f,
+        content = content,
+    )
 }

@@ -84,6 +84,15 @@ class EditTest {
     }
 }
 
+class ColorMigrationTest {
+    @Test
+    fun legacyPaletteMapsToBlueFamily() {
+        assertEquals(Defaults.TRACK_COLORS[1], Defaults.migrateTrackColor(0xFF8466FF))
+        assertEquals(Defaults.TRACK_COLORS[0], Defaults.migrateTrackColor(0xFF6366F1))
+        assertEquals(0xFF123456, Defaults.migrateTrackColor(0xFF123456))
+    }
+}
+
 class ProjectStoreTest {
     @Test
     fun undoRedoAndCoalescing() {

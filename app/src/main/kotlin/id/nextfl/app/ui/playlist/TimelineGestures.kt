@@ -31,6 +31,7 @@ import kotlin.math.hypot
 private sealed interface DragMode {
     data object Pan : DragMode
     data object Scrub : DragMode
+    data class Playhead(val grabOffset: Double) : DragMode
     data class Move(val clipId: String, val grabOffset: Double) : DragMode
     data class Trim(val clipId: String, val atStart: Boolean) : DragMode
 }
@@ -42,6 +43,12 @@ class TimelineGestures(
     private val scope: CoroutineScope,
 ) {
     var snapGuide by mutableStateOf<Double?>(null)
+        private set
+
+    // Shown instead of audible position
+    var scrubPosition by mutableStateOf<Double?>(null)
+        private set
+    var playheadGrabbed by mutableStateOf(false)
         private set
     private var state: EditorState = vm.editor.value
     private var snap = SnapMode.BEAT
@@ -118,9 +125,10 @@ class TimelineGestures(
     }
 
     private fun start(position: Offset): DragMode {
+        grabPlayhead(position)?.let { return it }
         val hit = geometry.hitTest(state.doc, state.assets, position.x, position.y, viewport.scrollSeconds, viewport.scrollY, viewport.pixelsPerSecond)
         return when (hit) {
-            is TimelineHit.Ruler -> DragMode.Scrub.also { vm.seek(hit.time) }
+            is TimelineHit.Ruler -> DragMode.Scrub.also { scrubTo(hit.time) }
             is TimelineHit.ClipEdge -> DragMode.Trim(hit.clipId, hit.atStart).also { vm.selectClip(hit.clipId) }
             is TimelineHit.ClipBody -> {
                 vm.selectClip(hit.clipId)
@@ -129,6 +137,23 @@ class TimelineGestures(
             }
             is TimelineHit.Empty -> DragMode.Pan
         }
+    }
+
+    // Handle drags relative, no jump
+    private fun grabPlayhead(position: Offset): DragMode? {
+        if (position.y >= geometry.metrics.rulerHeight) return null
+        val playhead = vm.position()
+        val x = geometry.timeToX(playhead, viewport.scrollSeconds, viewport.pixelsPerSecond)
+        if (kotlin.math.abs(position.x - x) > geometry.metrics.playheadGrab) return null
+        playheadGrabbed = true
+        scrubPosition = playhead
+        return DragMode.Playhead(geometry.xToTime(position.x, viewport.scrollSeconds, viewport.pixelsPerSecond) - playhead)
+    }
+
+    private fun scrubTo(time: Double) {
+        val target = time.coerceAtLeast(0.0)
+        scrubPosition = target
+        vm.seek(target)
     }
 
     private fun tap(mode: DragMode, position: Offset) {
@@ -142,7 +167,8 @@ class TimelineGestures(
         val time = geometry.xToTime(change.position.x, viewport.scrollSeconds, viewport.pixelsPerSecond)
         when (mode) {
             DragMode.Pan -> (change.position - change.previousPosition).let { scrollBy(it.x, it.y) }
-            DragMode.Scrub -> vm.seek(time.coerceAtLeast(0.0))
+            DragMode.Scrub -> scrubTo(time)
+            is DragMode.Playhead -> scrubTo(time - mode.grabOffset)
             is DragMode.Move -> moveClip(mode, time, change.position.y)
             is DragMode.Trim -> trimClip(mode, time)
         }
@@ -171,6 +197,8 @@ class TimelineGestures(
 
     private fun finish(mode: DragMode, moved: Boolean) {
         snapGuide = null
+        scrubPosition = null
+        playheadGrabbed = false
         if (moved && (mode is DragMode.Move || mode is DragMode.Trim)) vm.endGesture()
     }
 

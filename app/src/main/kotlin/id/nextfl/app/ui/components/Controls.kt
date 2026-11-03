@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +35,9 @@ import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
 
 enum class ButtonVariant { GHOST, SOLID, ACCENT, DANGER }
+
+// Buttons are 25% smaller app-wide
+val LocalControlScale = compositionLocalOf { 0.75f }
 
 private val Shape = RoundedCornerShape(Dimens.Radius)
 
@@ -57,19 +61,20 @@ fun IconAction(
     showLabel: Boolean = false,
 ) {
     val (background, tint) = variantColors(variant, active)
+    val s = LocalControlScale.current
     Row(
         modifier = modifier
-            .sizeIn(minWidth = Dimens.Control, minHeight = Dimens.Control)
+            .sizeIn(minWidth = Dimens.Control * s, minHeight = Dimens.Control * s)
             .alpha(if (enabled) 1f else 0.35f)
             .clip(Shape)
             .background(background)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 8.dp * s),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(6.dp * s, Alignment.CenterHorizontally),
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(18.dp))
-        if (showLabel) Text(label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(18.dp * s))
+        if (showLabel) Text(label, color = tint, fontSize = 12.sp * s, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -83,26 +88,27 @@ fun <T> SegmentedControl(
     icon: ((T) -> ImageVector)? = null,
     showLabels: Boolean = true,
 ) {
+    val s = LocalControlScale.current
     Row(
-        modifier = modifier.clip(Shape).background(Palette.Well).padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier.clip(Shape).background(Palette.Well).padding(2.dp * s),
+        horizontalArrangement = Arrangement.spacedBy(2.dp * s),
     ) {
         options.forEach { option ->
             val isSelected = option == selected
             val tint = if (isSelected) Palette.White else Palette.TextSecondary
             Row(
                 modifier = Modifier
-                    .height(30.dp)
+                    .height(30.dp * s)
                     .clip(RoundedCornerShape(Dimens.RadiusSmall))
                     .background(if (isSelected) Palette.Accent else Color.Transparent)
                     .clickable(role = Role.RadioButton) { onSelect(option) }
-                    .padding(horizontal = 10.dp),
+                    .padding(horizontal = 10.dp * s),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp * s),
             ) {
-                icon?.let { Icon(it(option), contentDescription = label(option), tint = tint, modifier = Modifier.size(16.dp)) }
+                icon?.let { Icon(it(option), contentDescription = label(option), tint = tint, modifier = Modifier.size(16.dp * s)) }
                 if (showLabels || icon == null) {
-                    Text(label(option), color = tint, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(label(option), color = tint, fontSize = 11.sp * s, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
             }
         }
@@ -111,24 +117,25 @@ fun <T> SegmentedControl(
 
 @Composable
 fun Switch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    val s = LocalControlScale.current
     Box(
         modifier = Modifier
-            .size(width = 34.dp, height = 18.dp)
+            .size(width = 34.dp * s, height = 18.dp * s)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(Shape)
             .background(if (checked) Palette.Accent else Palette.ControlHigh)
             .clickable(enabled = enabled, role = Role.Switch) { onChange(!checked) }
-            .padding(3.dp),
+            .padding(3.dp * s),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        Box(Modifier.size(12.dp).clip(RoundedCornerShape(Dimens.RadiusSmall)).background(Palette.White))
+        Box(Modifier.size(12.dp * s).clip(RoundedCornerShape(Dimens.RadiusSmall)).background(Palette.White))
     }
 }
 
 @Composable
 fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, hint: String? = null, enabled: Boolean = true) {
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp).alpha(if (enabled) 1f else 0.45f),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).alpha(if (enabled) 1f else 0.45f),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -175,17 +182,18 @@ fun FlatButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
         ButtonVariant.SOLID -> Palette.Control to Palette.White
         ButtonVariant.GHOST -> Color.Transparent to Palette.TextSecondary
     }
+    val s = LocalControlScale.current
     Box(
         modifier = modifier
-            .height(Dimens.Control)
+            .height(Dimens.Control * s)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(Shape)
             .background(background)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 14.dp * s),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, color = textColor, fontSize = 12.sp * s, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

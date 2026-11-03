@@ -28,8 +28,11 @@ object Palette {
     val White = Color(0xFFFFFFFF)
     val TextSecondary = Color(0xFFA1A1AA)
     val TextMuted = Color(0xFF71717A)
-    val Accent = Color(0xFF6366F1)
-    val AccentSoft = Color(0x2E6366F1)
+    // Blues derived from #0465C4
+    val Accent = Color(0xFF0465C4)
+    val AccentLight = Color(0xFF3C8DDB)
+    val AccentDeep = Color(0xFF034C93)
+    val AccentSoft = Color(0x330465C4)
     val Danger = Color(0xFFEF4444)
     val Mute = Color(0xFFF59E0B)
     val Solo = Color(0xFF22C55E)

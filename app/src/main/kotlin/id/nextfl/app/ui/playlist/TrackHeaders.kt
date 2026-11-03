@@ -41,6 +41,7 @@ import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.ColorSwatches
 import id.nextfl.app.ui.components.FlatButton
+import id.nextfl.app.ui.components.LocalControlScale
 import id.nextfl.app.ui.components.ModalDialog
 import id.nextfl.app.ui.components.TextInput
 import id.nextfl.app.ui.theme.Dimens
@@ -122,15 +123,16 @@ private fun TrackHeaderRow(track: Track, selected: Boolean, onSelect: () -> Unit
 
 @Composable
 fun SmallToggle(label: String, active: Boolean, activeColor: Color, onClick: () -> Unit) {
+    val s = LocalControlScale.current
     Box(
         modifier = Modifier
-            .size(width = 24.dp, height = 20.dp)
+            .size(width = 24.dp * s, height = 20.dp * s)
             .clip(RoundedCornerShape(Dimens.RadiusSmall))
             .background(if (active) activeColor else Palette.Well)
             .clickable(role = Role.Checkbox, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (active) Palette.Bg else Palette.TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = if (active) Palette.Bg else Palette.TextSecondary, fontSize = 10.sp * s, fontWeight = FontWeight.Bold)
     }
 }
 

@@ -23,6 +23,7 @@ object Sanitize {
 
     private fun track(track: Track): Track = track.copy(
         name = track.name.take(MAX_NAME),
+        color = Defaults.migrateTrackColor(track.color),
         volumeDb = track.volumeDb.coerceIn(AudioMath.MIN_DB, 6f),
         pan = track.pan.coerceIn(-1f, 1f),
         eq = track.eq.copy(

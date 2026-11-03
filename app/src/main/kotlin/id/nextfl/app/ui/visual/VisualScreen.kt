@@ -65,8 +65,8 @@ import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
 import id.nextfl.app.visual.PulseRingTemplate
 
-private val RING_COLORS = listOf(0xFFFFFFFF, 0xFFA5C0FF, 0xFFC5B5FF, 0xFF5EEAD4, 0xFFFFD166)
-private val PARTICLE_COLORS = listOf(0xFFF3A6FF, 0xFFFFFFFF, 0xFF7AA2FF, 0xFFA48BFF, 0xFFFF5C8A)
+private val RING_COLORS = listOf(0xFFFFFFFF, 0xFF6AAEEA, 0xFF3C8DDB, 0xFF0465C4, 0xFFFFD166)
+private val PARTICLE_COLORS = listOf(0xFFF3A6FF, 0xFFFFFFFF, 0xFF6AAEEA, 0xFF0465C4, 0xFFFF5C8A)
 private const val MAX_FRAME_SECONDS = 0.1f
 
 @Composable

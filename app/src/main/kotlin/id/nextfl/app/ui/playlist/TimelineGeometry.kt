@@ -18,6 +18,10 @@ class TimelineMetrics(density: Float) {
     val edgeHandle = 18f * density
     val minGridPx = 12f * density
     val trackHeaderWidth = 132f * density
+    val playheadGrab = 18f * density
+
+    // Keeps playhead handle fully visible
+    val originX = 10f * density
 }
 
 sealed interface TimelineHit {
@@ -28,9 +32,9 @@ sealed interface TimelineHit {
 }
 
 class TimelineGeometry(val metrics: TimelineMetrics) {
-    fun timeToX(time: Double, scroll: Double, pps: Float): Float = ((time - scroll) * pps).toFloat()
+    fun timeToX(time: Double, scroll: Double, pps: Float): Float = ((time - scroll) * pps).toFloat() + metrics.originX
 
-    fun xToTime(x: Float, scroll: Double, pps: Float): Double = scroll + x / pps
+    fun xToTime(x: Float, scroll: Double, pps: Float): Double = scroll + (x - metrics.originX) / pps
 
     fun rowTop(index: Int, scrollY: Float): Float = metrics.rulerHeight + index * metrics.rowHeight - scrollY
 
