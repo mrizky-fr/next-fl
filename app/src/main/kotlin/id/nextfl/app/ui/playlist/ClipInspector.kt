@@ -41,6 +41,7 @@ import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
 import id.nextfl.app.ui.components.Knob
+import id.nextfl.app.ui.components.ValueSlider
 import id.nextfl.app.ui.components.ModalDialog
 import id.nextfl.app.ui.components.PanelSection
 import id.nextfl.app.ui.components.TextInput
@@ -76,11 +77,9 @@ fun ClipInspector(vm: EditorViewModel, state: EditorState, clip: Clip) {
 private fun ClipLevelSection(vm: EditorViewModel, clip: Clip, duration: Double) {
     val maxFade = (duration / 2).coerceAtLeast(0.01).toFloat()
     PanelSection("Klip", action = { FlatButton("Normalize", Icons.Rounded.AutoFixHigh, { vm.normalizeClip(clip.id) }, variant = ButtonVariant.GHOST) }) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Knob("Gain", clip.gainDb, -24f..24f, 0f, { v -> vm.updateClip(clip.id, "gain:${clip.id}") { it.copy(gainDb = v) } }, { formatDb(it) }, bipolar = true)
-            Knob("Fade in", clip.fadeIn.toFloat().coerceAtMost(maxFade), 0f..maxFade, 0f, { v -> vm.updateClip(clip.id, "fi:${clip.id}") { it.copy(fadeIn = v.toDouble()) } }, { formatSeconds(it) })
-            Knob("Fade out", clip.fadeOut.toFloat().coerceAtMost(maxFade), 0f..maxFade, 0f, { v -> vm.updateClip(clip.id, "fo:${clip.id}") { it.copy(fadeOut = v.toDouble()) } }, { formatSeconds(it) })
-        }
+        ValueSlider("Gain", clip.gainDb, -24f..24f, { v -> vm.updateClip(clip.id, "gain:${clip.id}") { it.copy(gainDb = v) } }, { formatDb(it) }, origin = 0f)
+        ValueSlider("Fade in", clip.fadeIn.toFloat().coerceAtMost(maxFade), 0f..maxFade, { v -> vm.updateClip(clip.id, "fi:${clip.id}") { it.copy(fadeIn = v.toDouble()) } }, { formatSeconds(it) })
+        ValueSlider("Fade out", clip.fadeOut.toFloat().coerceAtMost(maxFade), 0f..maxFade, { v -> vm.updateClip(clip.id, "fo:${clip.id}") { it.copy(fadeOut = v.toDouble()) } }, { formatSeconds(it) })
     }
 }
 

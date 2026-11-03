@@ -258,6 +258,7 @@ fun ValueSlider(
     range: ClosedFloatingPointRange<Float>,
     onChange: (Float) -> Unit,
     format: (Float) -> String,
+    origin: Float = range.start,
 ) {
     val currentRange by rememberUpdatedState(range)
     val emit by rememberUpdatedState(onChange)
@@ -288,11 +289,14 @@ fun ValueSlider(
                 },
         ) {
             Canvas(Modifier.fillMaxWidth().height(24.dp)) {
-                val p = ((value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+                fun norm(v: Float) = ((v - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+                val p = norm(value)
+                val from = norm(origin)
                 val trackHeight = 4.dp.toPx()
                 val y = center.y - trackHeight / 2
                 drawRect(Palette.Well, Offset(0f, y), Size(size.width, trackHeight))
-                drawRect(Palette.Accent, Offset(0f, y), Size(size.width * p, trackHeight))
+                // Fill grows from origin
+                drawRect(Palette.Accent, Offset(size.width * minOf(from, p), y), Size(size.width * kotlin.math.abs(p - from), trackHeight))
                 val thumbWidth = 8.dp.toPx()
                 val thumbX = (size.width * p - thumbWidth / 2).coerceIn(0f, size.width - thumbWidth)
                 drawRoundRect(Palette.White, Offset(thumbX, center.y - 8.dp.toPx()), Size(thumbWidth, 16.dp.toPx()), CornerRadius(2.dp.toPx()))
