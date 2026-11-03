@@ -1,72 +1,117 @@
-# NextFL
+<div align="center">
 
-Aplikasi Android untuk mengedit dan me-remix lagu secara sederhana (gaya DAW seperti FL Studio), dilengkapi template visual yang bergerak mengikuti beat untuk konten DJ.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:131517,100:0465C4&height=200&section=header&text=NextFL&fontColor=ffffff&fontSize=56&fontAlignY=36&desc=Edit%2C%20Remix%2C%20dan%20Visual%20DJ%20di%20Android&descSize=18&descAlignY=58" alt="NextFL — Edit, Remix, dan Visual DJ di Android" width="100%" />
 
-## Features
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
-- [x] Import audio (MP3, M4A/AAC, WAV, OGG, FLAC, Opus) — otomatis di-decode ke PCM 44.1 kHz dan dideteksi BPM-nya
-- [x] Playlist multi-track — geser klip, trim tepi, potong di playhead, duplikat, hapus, snap (bar/beat/½/¼), pinch zoom
-- [x] Edit klip — gain, fade in/out, normalize
-- [x] Tempo — BPM project, tap tempo, klip ikut BPM project, speed manual, kunci nada (time-stretch WSOLA)
-- [x] Mixer — volume fader, pan, mute/solo, meter level per track + master (limiter)
-- [x] FX chain di setiap track dan master — Parametric EQ 5 band (kurva respons), Stereoizer (strength, timbre, focus bass mono, delay Haas L/R, pan), Reverb (Main: decay, high damp, mix, early reflections, room size · Tune: pre-delay, low/high cut, diffusion · Mixer: dry, wet, width), Graphic EQ 8 band, Leveller (gain, pan, meter). Tiap modul punya on/off, preset, reset, salin/tempel
-- [x] Template visual "Pulse Ring" — logo DJ + background bisa diganti, ring spektrum, partikel, kilatan garis, goyang saat beat; rasio 16:9, 9:16, 1:1
-- [x] Undo/redo, autosave proyek
-- [x] Export mixdown WAV ke `Music/NextFL` + bagikan
-- [x] Export video MP4 dari template visual (pilih rasio 16:9, 9:16, 1:1; 30 fps, H.264 + AAC, bisa dibatalkan)
-- [ ] Versi desktop (Compose Multiplatform)
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL-debug.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.0-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
-## Tech Stack
+<sub>Android 10+ · ±62,1 MB · Gratis</sub>
 
-| Layer | Technology |
+</div>
+
+## NextFL
+
+Mempersembahkan **NextFL**, studio musik saku untuk Android. Susun lagu di playlist multi-track, rapikan tempo, racik suaranya di mixer, lalu ubah jadi konten: logo DJ-mu berdenyut di tengah layar, mengikuti setiap hentakan drum.
+
+Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak ada yang dikirim ke mana pun.
+
+- **Gaya FL Studio**, tapi disederhanakan untuk layar sentuh
+- **Mixer sungguhan**, setiap knob benar-benar mengubah suara
+- **Visual ikut beat**, logo, gunung spektrum, dan komet berasap bergerak sesuai drum
+- **Siap posting**, export WAV atau video MP4 16:9, 9:16, dan 1:1
+
+## Pengalaman Membuat
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Playlist multi-track</h3>
+      Import MP3, M4A, WAV, OGG, FLAC, atau Opus. Geser, trim, potong di playhead, duplikat, dan snap ke bar atau beat dengan pinch zoom.
+    </td>
+    <td width="50%" valign="top">
+      <h3>Tempo yang menurut</h3>
+      BPM terdeteksi otomatis. Klip bisa ikut BPM project, diatur speed-nya, dan nada tetap terkunci lewat time-stretch.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Mixer ala studio</h3>
+      Fader, pan, mute dan solo, plus FX chain di setiap track dan master: Parametric EQ, Stereoizer, Reverb, Graphic EQ 8 band, dan Leveller. Lengkap dengan preset, reset, salin, dan tempel.
+    </td>
+    <td width="50%" valign="top">
+      <h3>NextPlayer</h3>
+      Template Pulse Ring dengan logo DJ dan background pilihanmu. Gunung beat, komet berasap, dan partikel bereaksi pada drum, dengan slider sinkron untuk HP mana pun.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>Mode Ngonten</h3>
+      Track di kiri, preview visual kotak di kanan. Edit lagu sambil melihat hasil kontennya secara langsung.
+    </td>
+    <td width="50%" valign="top">
+      <h3>Export sekali ketuk</h3>
+      Mixdown WAV ke Music/NextFL, atau render video MP4 30 fps ke Movies/NextFL. Pilih rasio dulu, batalkan kapan saja.
+    </td>
+  </tr>
+</table>
+
+## Install Sekarang
+
+<div align="center">
+
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL-debug.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.0-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+
+</div>
+
+1. Unduh APK lewat tombol di atas.
+2. Buka file yang terunduh. Bila diminta, izinkan pemasangan dari sumber ini.
+3. Pasang, buka **NextFL**, tekan **+ Audio**, dan mulai meracik.
+
+## Dibangun Dengan
+
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=kotlin" alt="Kotlin" title="Kotlin" width="48" height="48" />&nbsp;
+  <img src="https://skillicons.dev/icons?i=androidstudio" alt="Android Studio" title="Android Studio" width="48" height="48" />&nbsp;
+  <img src="https://skillicons.dev/icons?i=gradle" alt="Gradle" title="Gradle" width="48" height="48" />
+</p>
+
+<p align="center"><sub>Kotlin · Jetpack Compose · AudioTrack · MediaCodec · OpenGL ES · Font Inter</sub></p>
+
+<details>
+<summary><b>Untuk developer</b></summary>
+
+<br>
+
+Build dan uji dengan JDK bawaan Android Studio:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat :core:test :app:assembleDebug
+```
+
+APK debug dibuat di `app/build/outputs/apk/debug/NextFL-debug.apk`, lalu disalin ke [`release/NextFL-debug.apk`](release/NextFL-debug.apk) untuk tombol unduh. Build rilis memakai `:app:assembleRelease` (R8 dan resource shrinking aktif) dengan keystore di luar repo.
+
+Project terbagi dua modul:
+
+| Modul | Isi |
 |---|---|
-| Bahasa | Kotlin 2.4 |
-| UI | Jetpack Compose (Material 3 minimal, komponen custom), font Inter |
-| Audio engine | Mixer sendiri di `:core` (Kotlin murni) + `AudioTrack` float |
-| Decode audio | `MediaExtractor` + `MediaCodec`, resampler windowed-sinc |
-| DSP | Biquad EQ, graphic EQ, stereoizer M/S, reverb FDN + early reflections, limiter, WSOLA time-stretch, FFT, deteksi BPM & beat |
-| Penyimpanan | JSON (kotlinx.serialization) + PCM 16-bit di storage aplikasi (memory-mapped) |
-| Build | Gradle 9.8, AGP 9.4, compileSdk 37, minSdk 29 |
+| `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA, FFT), mix engine, deteksi BPM dan beat. Bisa dipakai ulang untuk versi desktop. |
+| `app/` | Android: decode audio, playback `AudioTrack`, penyimpanan proyek, UI Compose, template visual, dan render video H.264 + AAC. |
 
-## Struktur Project
+Tidak ada environment variable atau API key. Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
-```
-core/   Logika murni Kotlin/JVM (model, edit, undo, DSP, engine) — bisa dipakai ulang untuk desktop
-app/    Aplikasi Android (audio I/O, penyimpanan, UI Compose, template visual)
-```
+</details>
 
-## Getting Started (Development)
+## Catatan
 
-### Prerequisites
+APK di tombol unduh adalah **build debug** untuk uji coba, bukan rilis Play Store. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)).
 
-- Android Studio (sudah termasuk JDK) atau JDK 21+
-- Android SDK platform 37
+## Pembuat
 
-### Setup
+Dibuat oleh **M Rizky** (Kyy).
 
-```bash
-# 1. Buka folder ini di Android Studio, atau lewat terminal:
-./gradlew :core:test            # unit test engine & DSP
-./gradlew :app:assembleDebug    # build APK debug
+[![GitHub](https://img.shields.io/badge/GitHub-mrizky--fr-131517?style=for-the-badge)](https://github.com/mrizky-fr)
+[![Repo](https://img.shields.io/badge/Repo-next--fl-0465C4?style=for-the-badge)](https://github.com/mrizky-fr/next-fl)
 
-# 2. Install ke HP/emulator yang terhubung
-./gradlew :app:installDebug
-```
-
-APK debug ada di `app/build/outputs/apk/debug/NextFL-debug.apk`.
-
-### Environment Variables
-
-Tidak ada. Aplikasi berjalan sepenuhnya offline dan tidak memakai secret/API key. Lokasi SDK diatur otomatis oleh Android Studio di `local.properties` (tidak di-commit).
-
-## Production Build
-
-```bash
-./gradlew :app:assembleRelease   # R8 + resource shrinking aktif
-```
-
-Untuk rilis ke Play Store, tambahkan konfigurasi signing (keystore) di luar repo.
-
-## License
-
-Kode: privat. Font Inter: SIL Open Font License (lihat `licenses/Inter-OFL.txt`).
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0465C4,100:131517&height=120&section=footer" alt="" width="100%" />
