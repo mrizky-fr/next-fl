@@ -17,6 +17,7 @@ class TrackProcessor(sampleRate: Int, maxBlock: Int) {
     @Volatile
     var peak = 0f
         private set
+    val history = PeakHistory()
 
     fun clear(frames: Int) {
         left.fill(0f, 0, frames)

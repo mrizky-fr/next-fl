@@ -29,7 +29,8 @@ class VideoRenderer(
     private val info = MediaCodec.BufferInfo()
     private val analyzer = SpectrumAnalyzer(audio.sampleRate)
     private val window = FloatArray(analyzer.fftSize)
-    private val lookaheadFrames = (LOOKAHEAD_SECONDS * audio.sampleRate).roundToInt()
+    // Window centered on frame time
+    private val lookaheadFrames = analyzer.fftSize / 2
     private var audioFrame = 0
     private var audioDone = false
     private val ended = HashSet<MuxTrack>()
@@ -178,7 +179,6 @@ class VideoRenderer(
         const val CHANNELS = 2
         const val BYTES_PER_FRAME = 4
         const val KEYFRAME_SECONDS = 1
-        const val LOOKAHEAD_SECONDS = 0.06
         const val INPUT_TIMEOUT_US = 10_000L
         const val OUTPUT_TIMEOUT_US = 10_000L
         const val MAX_IDLE_POLLS = 1000

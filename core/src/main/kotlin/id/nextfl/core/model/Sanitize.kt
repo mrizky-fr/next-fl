@@ -55,6 +55,7 @@ object Sanitize {
     fun visual(settings: VisualSettings): VisualSettings = settings.copy(
         title = settings.title.take(80),
         sensitivity = settings.sensitivity.coerceIn(0.3f, 2.5f),
+        syncMs = settings.syncMs.coerceIn(0, VisualSettings.MAX_SYNC_MS),
         backgroundDim = settings.backgroundDim.coerceIn(0f, 0.95f),
         backgroundBlur = settings.backgroundBlur.coerceIn(0f, 20f),
         particleCount = settings.particleCount.coerceIn(0, 200),

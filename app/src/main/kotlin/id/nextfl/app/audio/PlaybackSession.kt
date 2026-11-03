@@ -70,7 +70,8 @@ class PlaybackSession(private val engine: MixEngine) : Thread("nextfl-audio") {
 
     private companion object {
         const val BLOCK_FRAMES = 1024
-        const val BUFFER_BLOCKS = 4
+        // Render-ahead room for visual sync
+        const val BUFFER_BLOCKS = 6
         const val JOIN_TIMEOUT_MS = 500L
 
         fun buildTrack(sampleRate: Int): AudioTrack {

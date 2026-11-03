@@ -53,6 +53,7 @@ import id.nextfl.app.ui.theme.Fonts
 import androidx.compose.ui.unit.dp
 import id.nextfl.core.model.AspectRatio
 import id.nextfl.core.model.VisualSettings
+import kotlin.math.roundToInt
 import id.nextfl.app.data.VisualImage
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.editor.UiState
@@ -123,7 +124,7 @@ fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: 
         val now = tick
         val dt = if (last.longValue == 0L) 1 / 60f else ((now - last.longValue) / 1e9f).coerceIn(0f, MAX_FRAME_SECONDS)
         last.longValue = now
-        val frame = vm.analysis.next(dt, settings.sensitivity)
+        val frame = vm.analysis.next(dt, settings.sensitivity, settings.syncMs)
         drawIntoCanvas { template.draw(it.nativeCanvas, size.width.toInt(), size.height.toInt(), frame, dt, settings) }
     }
 }
@@ -156,6 +157,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
         }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
+            ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
             ToggleRow("Komet segitiga", settings.streaks, { on -> update { it.copy(streaks = on) } })
             ToggleRow("Goyang saat beat", settings.shake, { on -> update { it.copy(shake = on) } })

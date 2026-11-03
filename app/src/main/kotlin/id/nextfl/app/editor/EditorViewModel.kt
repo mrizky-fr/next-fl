@@ -224,6 +224,9 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         app.library.remove(assetId)
     }
 
+    /** Level heard now, per track. */
+    fun trackLevel(trackId: String): Float = app.playback.audibleTrackPeak(trackId)
+
     // Export
     fun exportWav() = launchExport { graph, track ->
         val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME))

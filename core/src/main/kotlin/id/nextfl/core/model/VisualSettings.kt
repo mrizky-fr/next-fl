@@ -23,4 +23,10 @@ data class VisualSettings(
     val particleCount: Int = 70,
     val streaks: Boolean = true,
     val shake: Boolean = true,
-)
+    val syncMs: Int = 100,
+) {
+    companion object {
+        // Limited by audio render-ahead
+        const val MAX_SYNC_MS = 250
+    }
+}

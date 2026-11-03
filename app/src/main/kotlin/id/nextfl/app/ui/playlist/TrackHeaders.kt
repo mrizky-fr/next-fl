@@ -1,5 +1,9 @@
 package id.nextfl.app.ui.playlist
 
+import kotlin.math.log10
+import id.nextfl.app.ui.components.rememberFrameTick
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -67,7 +71,7 @@ private const val LABEL_BOOST = 1.4f
 private val TOGGLE_TOUCH_PAD = 4.dp
 
 @Composable
-fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: String?, geometry: TimelineGeometry) {
+fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: String?, geometry: TimelineGeometry, playing: Boolean) {
     var editing by remember { mutableStateOf<Track?>(null) }
     var listHeight by remember { mutableFloatStateOf(0f) }
     val viewport = vm.viewport
@@ -105,6 +109,8 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
                     TrackHeaderRow(
                         track = track,
                         selected = track.id == selectedTrackId,
+                        playing = playing,
+                        level = { vm.trackLevel(track.id) },
                         onSelect = { vm.selectTrack(track.id) },
                         onEdit = { editing = track },
                         onMute = { vm.updateTrack(track.id) { it.copy(mute = !it.mute) } },
@@ -120,7 +126,16 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
 
 // Row height matches timeline rows
 @Composable
-private fun TrackHeaderRow(track: Track, selected: Boolean, onSelect: () -> Unit, onEdit: () -> Unit, onMute: () -> Unit, onSolo: () -> Unit) {
+private fun TrackHeaderRow(
+    track: Track,
+    selected: Boolean,
+    playing: Boolean,
+    level: () -> Float,
+    onSelect: () -> Unit,
+    onEdit: () -> Unit,
+    onMute: () -> Unit,
+    onSolo: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,7 +146,7 @@ private fun TrackHeaderRow(track: Track, selected: Boolean, onSelect: () -> Unit
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.width(4.dp).height(40.dp).clip(RoundedCornerShape(Dimens.RadiusSmall)).background(Color(track.color)))
+        TrackColorStrip(Color(track.color), playing, level)
         Column(Modifier.weight(1f)) {
             Text(track.name, style = TextStyles.Body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("Tahan untuk edit", style = TextStyles.Caption.copy(fontSize = 9.sp, color = Palette.TextMuted), maxLines = 1)
@@ -142,6 +157,43 @@ private fun TrackHeaderRow(track: Track, selected: Boolean, onSelect: () -> Unit
         }
     }
     Box(Modifier.fillMaxWidth().height(ROW_GAP_DP.dp))
+}
+
+// Strip flickers with heard level
+@Composable
+private fun TrackColorStrip(color: Color, playing: Boolean, level: () -> Float) {
+    val tick by rememberFrameTick(active = playing)
+    val glow = remember { StripGlow() }
+    Canvas(Modifier.width(4.dp).height(40.dp)) {
+        val brightness = if (playing) glow.update(level(), tick) else 1f
+        drawRoundRect(color.copy(alpha = brightness), cornerRadius = CornerRadius(Dimens.RadiusSmall.toPx()))
+    }
+}
+
+/** Brightness relative to recent loudest. */
+private class StripGlow {
+    private var value = DIM
+    private var ceiling = FLOOR_DB + RANGE_DB
+    private var lastNanos = 0L
+
+    fun update(peak: Float, nanos: Long): Float {
+        val dt = if (lastNanos == 0L) 0f else ((nanos - lastNanos) / 1e9f).coerceIn(0f, MAX_STEP_SECONDS)
+        lastNanos = nanos
+        val db = if (peak > 0f) 20f * log10(peak) else FLOOR_DB
+        ceiling = maxOf(db, ceiling - CEILING_FALL_DB * dt, FLOOR_DB + RANGE_DB)
+        val target = if (db <= FLOOR_DB) DIM else DIM + (1f - DIM) * ((db - ceiling + RANGE_DB) / RANGE_DB).coerceIn(0f, 1f)
+        value = maxOf(target, value - FADE_PER_SECOND * dt)
+        return value
+    }
+
+    private companion object {
+        const val DIM = 0.25f
+        const val FLOOR_DB = -48f
+        const val RANGE_DB = 9f
+        const val CEILING_FALL_DB = 6f
+        const val FADE_PER_SECOND = 6f
+        const val MAX_STEP_SECONDS = 0.1f
+    }
 }
 
 @Composable

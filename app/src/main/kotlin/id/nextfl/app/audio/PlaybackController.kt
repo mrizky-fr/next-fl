@@ -113,6 +113,8 @@ class PlaybackController(
 
     fun audibleOutputFrame(): Long = session?.audibleOutputFrame() ?: 0L
 
+    fun audibleTrackPeak(trackId: String): Float = if (isPlaying.value) engine.trackPeakAt(trackId, audibleOutputFrame()) else 0f
+
     private suspend fun watchEnd() {
         while (true) {
             delay(END_WATCH_MS)
@@ -134,17 +136,19 @@ class PlaybackController(
 class VisualAnalysis(private val playback: PlaybackController) {
     private val analyzer = SpectrumAnalyzer(playback.engine.sampleRate)
     private val window = FloatArray(analyzer.fftSize)
-    private val lookahead = (LOOKAHEAD_SECONDS * playback.engine.sampleRate).toLong()
 
-    fun next(dt: Float, sensitivity: Float): AudioFrame {
-        if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(), window) else window.fill(0f)
+    fun next(dt: Float, sensitivity: Float, syncMs: Int): AudioFrame {
+        if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(syncMs), window) else window.fill(0f)
         return analyzer.analyze(window, dt, sensitivity)
     }
 
-    // Offsets FFT and display lag
-    private fun lookaheadEnd(): Long = minOf(playback.audibleOutputFrame() + lookahead, playback.engine.tap.written)
+    // Offsets FFT, display, device latency
+    private fun lookaheadEnd(syncMs: Int): Long {
+        val lookahead = syncMs.toLong() * playback.engine.sampleRate / MILLIS_PER_SECOND
+        return minOf(playback.audibleOutputFrame() + lookahead, playback.engine.tap.written)
+    }
 
     private companion object {
-        const val LOOKAHEAD_SECONDS = 0.06
+        const val MILLIS_PER_SECOND = 1000L
     }
 }
