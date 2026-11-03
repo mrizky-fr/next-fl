@@ -68,7 +68,7 @@ class ParticleField(private val random: Random = Random(7)) {
 
 /** Triangle comets falling top-right to bottom-left. */
 class CometField(private val random: Random = Random(11)) {
-    private class Comet(val size: Float, val seed: Float) {
+    private class Comet(val size: Float) {
         var x = 0f
         var y = 0f
         var heading = 0f
@@ -76,12 +76,14 @@ class CometField(private val random: Random = Random(11)) {
         var spin = 0f
         var angle = 0f
         var travelled = 0f
+        var sinceEmit = 0f
         val trailX = FloatArray(TRAIL_POINTS)
         val trailY = FloatArray(TRAIL_POINTS)
         val trailAge = FloatArray(TRAIL_POINTS)
+        val trailScale = FloatArray(TRAIL_POINTS)
+        val trailPhase = FloatArray(TRAIL_POINTS)
         var trailStart = 0
         var trailCount = 0
-        var trailSerial = 0
     }
 
     private val comets = ArrayList<Comet>()
@@ -128,13 +130,31 @@ class CometField(private val random: Random = Random(11)) {
         comet.wobble = (comet.wobble + (random.nextFloat() - 0.5f) * WOBBLE_JITTER * dt).coerceIn(-MAX_WOBBLE, MAX_WOBBLE)
         val direction = comet.heading + comet.wobble
         val step = speed * dt
+        val fromX = comet.x
+        val fromY = comet.y
         comet.x += cos(direction) * step
         comet.y += sin(direction) * step
         comet.angle += (comet.spin + boost * SPIN_BOOST) * dt
         ageTrail(comet, dt)
-        comet.travelled += step
-        if (comet.travelled >= unit * TRAIL_SPACING) {
-            pushTrail(comet)
+        emitTrail(comet, fromX, fromY, step, dt, unit)
+    }
+
+    // Interpolated puffs, never gaps
+    private fun emitTrail(comet: Comet, fromX: Float, fromY: Float, step: Float, dt: Float, unit: Float) {
+        val spacing = unit * TRAIL_SPACING
+        var along = spacing - comet.travelled
+        var emitted = false
+        while (along <= step) {
+            val f = along / step
+            pushTrail(comet, fromX + (comet.x - fromX) * f, fromY + (comet.y - fromY) * f, dt * (1f - f))
+            along += spacing
+            emitted = true
+        }
+        comet.travelled = spacing - (along - step)
+        comet.sinceEmit = if (emitted) 0f else comet.sinceEmit + dt
+        if (comet.sinceEmit >= EMIT_SECONDS) {
+            pushTrail(comet, comet.x, comet.y, 0f)
+            comet.sinceEmit = 0f
             comet.travelled = 0f
         }
     }
@@ -144,12 +164,13 @@ class CometField(private val random: Random = Random(11)) {
         return comet.x < -margin || comet.y > height + margin
     }
 
-    private fun pushTrail(comet: Comet) {
+    private fun pushTrail(comet: Comet, x: Float, y: Float, age: Float) {
         val index = (comet.trailStart + comet.trailCount) % TRAIL_POINTS
-        comet.trailX[index] = comet.x
-        comet.trailY[index] = comet.y
-        comet.trailAge[index] = 0f
-        comet.trailSerial++
+        comet.trailX[index] = x
+        comet.trailY[index] = y
+        comet.trailAge[index] = age
+        comet.trailScale[index] = PUFF_MIN_SCALE + random.nextFloat() * PUFF_SCALE_SPREAD
+        comet.trailPhase[index] = random.nextFloat() * TWO_PI
         if (comet.trailCount < TRAIL_POINTS) comet.trailCount++ else comet.trailStart = (comet.trailStart + 1) % TRAIL_POINTS
     }
 
@@ -163,17 +184,15 @@ class CometField(private val random: Random = Random(11)) {
 
     // Illustrated round smoke puffs
     private fun drawPuffs(canvas: Canvas, comet: Comet, color: Int, unit: Float) {
-        val firstSerial = comet.trailSerial - comet.trailCount
+        puff.color = color
         for (i in 0 until comet.trailCount) {
-            if ((firstSerial + i) % PUFF_EVERY != 0) continue
             val index = (comet.trailStart + i) % TRAIL_POINTS
             val age = comet.trailAge[index]
             val t = (age / TRAIL_LIFE).coerceIn(0f, 1f)
-            val radius = comet.size * (PUFF_START + t * PUFF_GROWTH)
-            val driftX = sin(comet.seed + age * SMOKE_SWAY_RATE) * unit * SMOKE_SWAY * t
+            val radius = comet.size * comet.trailScale[index] * (PUFF_START + t * PUFF_GROWTH)
+            val driftX = sin(comet.trailPhase[index] + age * SMOKE_SWAY_RATE) * unit * SMOKE_SWAY * t
             val driftY = -unit * SMOKE_RISE * t
-            puff.color = color
-            puff.alpha = ((1f - t).pow(1.2f) * PUFF_ALPHA * 255).toInt().coerceIn(0, 255)
+            puff.alpha = ((1f - t).pow(PUFF_FADE) * PUFF_ALPHA * 255).toInt().coerceIn(0, 255)
             canvas.drawCircle(comet.trailX[index] + driftX, comet.trailY[index] + driftY, radius, puff)
         }
     }
@@ -194,7 +213,7 @@ class CometField(private val random: Random = Random(11)) {
 
     // Enters from top or right edge
     private fun spawn(unit: Float, anywhere: Boolean): Comet {
-        val comet = Comet(size = unit * (0.014f + random.nextFloat() * 0.012f), seed = random.nextFloat() * 10f)
+        val comet = Comet(size = unit * (0.014f + random.nextFloat() * 0.012f))
         val margin = unit * EDGE_MARGIN * 0.5f
         when {
             anywhere -> {
@@ -211,19 +230,22 @@ class CometField(private val random: Random = Random(11)) {
             }
         }
         comet.heading = FALL_HEADING + (random.nextFloat() - 0.5f) * HEADING_SPREAD
-        comet.angle = random.nextFloat() * 2 * PI.toFloat()
+        comet.angle = random.nextFloat() * TWO_PI
         comet.spin = (random.nextFloat() - 0.5f) * 1.2f
         return comet
     }
 
     private companion object {
-        const val TRAIL_POINTS = 120
+        const val TRAIL_POINTS = 320
         const val TRAIL_LIFE = 1.3f
-        const val TRAIL_SPACING = 0.0035f
-        const val PUFF_EVERY = 3
+        const val TRAIL_SPACING = 0.004f
+        const val EMIT_SECONDS = 0.03f
         const val PUFF_START = 0.45f
         const val PUFF_GROWTH = 1.7f
-        const val PUFF_ALPHA = 0.5f
+        const val PUFF_ALPHA = 0.3f
+        const val PUFF_FADE = 1.6f
+        const val PUFF_MIN_SCALE = 0.75f
+        const val PUFF_SCALE_SPREAD = 0.5f
         const val CRUISE_SPEED = 0.05f
         const val BURST_SPEED = 0.75f
         const val ENERGY_SPEED = 0.08f
@@ -234,47 +256,39 @@ class CometField(private val random: Random = Random(11)) {
         const val MAX_WOBBLE = 0.15f
         const val SPIN_BOOST = 5f
         const val EDGE_MARGIN = 0.12f
-        const val SMOKE_SWAY = 0.012f
+        const val SMOKE_SWAY = 0.018f
         const val SMOKE_SWAY_RATE = 1.7f
         const val SMOKE_RISE = 0.018f
         const val HEAD_STROKE = 0.0035f
         const val HEAD_PULSE = 0.25f
         const val HEAD_ALPHA = 235
         const val THIRD_TURN = 2.0943952f
+        const val TWO_PI = 6.2831855f
     }
 }
 
-/** One smooth drum hill per upper corner. */
-class SpectrumRing {
-    private val baseline = FloatArray(LOW_BANDS)
-    private var leftLevel = 0f
-    private var rightLevel = 0f
+/** Mirrored beat hills, upper corners. */
+class BeatHills {
+    private var level = 0f
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
 
-    // Transients above running average only
-    fun update(bands: FloatArray, kick: Float, dt: Float) {
-        val follow = 1f - exp(-dt / BASELINE_SECONDS)
-        var low = 0f
-        var high = 0f
-        for (b in 0 until LOW_BANDS) {
-            val level = bands[b]
-            baseline[b] += (level - baseline[b]) * follow
-            val transient = max(0f, level - baseline[b]) / max(MIN_HEADROOM, 1f - baseline[b])
-            if (b < LOW_BANDS / 2) low = max(low, transient) else high = max(high, transient)
-        }
-        leftLevel = glide(leftLevel, min(1f, low * TRANSIENT_GAIN + kick * KICK_GAIN), dt)
-        rightLevel = glide(rightLevel, min(1f, high * TRANSIENT_GAIN + kick * KICK_GAIN), dt)
+    // Instant rise, fast fall
+    fun update(beat: Boolean, strength: Float, dt: Float) {
+        level *= exp(-dt / RELEASE_SECONDS)
+        if (beat) level = max(level, strength.pow(RESPONSE_CURVE))
     }
 
     // Filled hills between circle and curve
     fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float) {
+        if (level < MIN_LEVEL) return
+        val lift = level * AMPLITUDE * sensitivity
         path.reset()
         path.fillType = Path.FillType.EVEN_ODD
         for (j in 0 until POINTS) {
             val angle = -PI.toFloat() / 2 + j * 2 * PI.toFloat() / POINTS
-            val hill = leftLevel * bell(angle, UPPER_LEFT) + rightLevel * bell(angle, UPPER_RIGHT)
-            val r = radius * (1f + hill * AMPLITUDE * sensitivity)
+            val hill = max(bell(angle, UPPER_LEFT), bell(angle, UPPER_RIGHT))
+            val r = radius * (1f + hill * lift)
             val x = cx + cos(angle) * r
             val y = cy + sin(angle) * r
             if (j == 0) path.moveTo(x, y) else path.lineTo(x, y)
@@ -283,11 +297,6 @@ class SpectrumRing {
         path.addCircle(cx, cy, radius, Path.Direction.CW)
         fill.color = color
         canvas.drawPath(path, fill)
-    }
-
-    private fun glide(current: Float, target: Float, dt: Float): Float {
-        val seconds = if (target > current) ATTACK_SECONDS else RELEASE_SECONDS
-        return current + (target - current) * (1f - exp(-dt / seconds))
     }
 
     // EQ-style bell, zero at edges
@@ -302,16 +311,12 @@ class SpectrumRing {
 
     private companion object {
         const val POINTS = 360
-        const val LOW_BANDS = 20
-        const val AMPLITUDE = 0.32f
+        const val AMPLITUDE = 0.42f
         const val HILL_HALF_WIDTH = 0.75f
         const val HILL_POWER = 1.4f
-        const val BASELINE_SECONDS = 0.8f
-        const val ATTACK_SECONDS = 0.02f
-        const val RELEASE_SECONDS = 0.16f
-        const val MIN_HEADROOM = 0.08f
-        const val TRANSIENT_GAIN = 2.2f
-        const val KICK_GAIN = 0.35f
+        const val RELEASE_SECONDS = 0.07f
+        const val RESPONSE_CURVE = 0.6f
+        const val MIN_LEVEL = 0.005f
         val UPPER_RIGHT = (-PI / 4).toFloat()
         val UPPER_LEFT = (-3 * PI / 4).toFloat()
     }

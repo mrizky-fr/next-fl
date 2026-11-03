@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.Icon
@@ -139,7 +140,12 @@ private fun BusyOverlay(busy: BusyState) {
                     drawStopIndicator = {},
                     modifier = Modifier.fillMaxWidth().height(3.dp),
                 )
-                Text("${(progress * 100).toInt()}%", style = TextStyles.LcdSmall)
+            }
+            if (progress != null || busy.onCancel != null) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(progress?.let { "${(it * 100).toInt()}%" }.orEmpty(), style = TextStyles.LcdSmall, modifier = Modifier.weight(1f))
+                    busy.onCancel?.let { FlatButton("Batal", Icons.Rounded.Close, it, variant = ButtonVariant.GHOST) }
+                }
             }
         }
     }

@@ -15,7 +15,7 @@ class ToastAction(val label: String, val run: () -> Unit)
 
 data class Toast(val id: Long, val message: String, val tone: ToastTone, val action: ToastAction? = null)
 
-data class BusyState(val message: String, val progress: Float? = null)
+data class BusyState(val message: String, val progress: Float? = null, val onCancel: (() -> Unit)? = null)
 
 class UiMessages(private val scope: CoroutineScope) {
     private val ids = AtomicLong()
@@ -36,11 +36,11 @@ class UiMessages(private val scope: CoroutineScope) {
     fun dismiss(id: Long) = mutableToasts.update { list -> list.filterNot { it.id == id } }
 
     // Skips sub-percent progress updates
-    fun busy(message: String, progress: Float? = null) {
+    fun busy(message: String, progress: Float? = null, onCancel: (() -> Unit)? = null) {
         val current = mutableBusy.value
         val sameStep = current?.message == message && current.progress != null && progress != null &&
             kotlin.math.abs(current.progress - progress) < PROGRESS_STEP
-        if (!sameStep) mutableBusy.value = BusyState(message, progress)
+        if (!sameStep) mutableBusy.value = BusyState(message, progress, onCancel)
     }
 
     fun idle() {

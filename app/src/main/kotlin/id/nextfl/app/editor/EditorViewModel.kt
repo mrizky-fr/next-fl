@@ -29,9 +29,14 @@ import id.nextfl.core.util.Ids
 import id.nextfl.app.AppContainer
 import id.nextfl.app.audio.AudioDecodeException
 import id.nextfl.app.audio.LoadedAsset
+import id.nextfl.app.data.ExportTarget
 import id.nextfl.app.data.MediaExporter
 import id.nextfl.app.data.VisualImage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +51,7 @@ import kotlin.math.floor
 /** Entry point for user actions. */
 class EditorViewModel(private val app: AppContainer) : ViewModel() {
     private val store = app.store
+    private var exportJob: Job? = null
     val editor = store.state
     val isPlaying = app.playback.isPlaying
     val visualSettings: StateFlow<VisualSettings> = app.visuals.settings
@@ -212,30 +218,38 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     // Export
     fun exportWav() {
-        viewModelScope.launch {
+        if (exportJob?.isActive == true) return
+        exportJob = viewModelScope.launch {
             val state = store.current
             if (state.doc.clips.isEmpty()) {
                 app.messages.toast("Proyek masih kosong, tambahkan audio dulu", ToastTone.ERROR)
                 return@launch
             }
-            app.messages.busy("Menyiapkan export", 0f)
+            var target: ExportTarget? = null
+            app.messages.busy("Menyiapkan export", 0f, ::cancelExport)
             try {
                 val resolver = prepareExportSources(state.doc, state.assets)
                 val graph = RenderGraphBuilder.build(state.doc, state.assets, AppContainer.SAMPLE_RATE, resolver)
                 val total = OfflineRenderer.totalFrames(graph)
-                val target = app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME)
-                val finished = withContext(Dispatchers.Default) {
-                    WavWriter(target.stream, AppContainer.SAMPLE_RATE, total).use { writer ->
+                val output = app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME)
+                target = output
+                withContext(Dispatchers.Default) {
+                    WavWriter(output.stream, AppContainer.SAMPLE_RATE, total).use { writer ->
                         OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { progress ->
-                            app.messages.busy("Merender mixdown", progress)
-                        })
+                            app.messages.busy("Merender mixdown", progress, ::cancelExport)
+                        }, isCancelled = { !isActive })
                     }
                 }
-                if (!finished) return@launch app.exporter.discard(target)
-                app.exporter.publish(target)
-                val share = ToastAction("Bagikan") { app.shareAudio(target.uri) }
+                ensureActive()
+                app.exporter.publish(output)
+                val share = ToastAction("Bagikan") { app.shareAudio(output.uri) }
                 app.messages.toast("Tersimpan di Music/${MediaExporter.FOLDER}", ToastTone.SUCCESS, share)
+            } catch (cancelled: CancellationException) {
+                target?.let(app.exporter::discard)
+                app.messages.toast("Export dibatalkan")
+                throw cancelled
             } catch (error: Exception) {
+                target?.let(app.exporter::discard)
                 android.util.Log.e(TAG, "Export failed", error)
                 app.messages.toast("Export gagal: ${error.message ?: "tidak diketahui"}", ToastTone.ERROR)
             } finally {
@@ -244,11 +258,15 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
+    fun cancelExport() {
+        exportJob?.cancel()
+    }
+
     private suspend fun prepareExportSources(doc: ProjectDoc, assets: Map<String, AudioAsset>): SourceResolver {
         for (clip in doc.clips) {
             val rate = clipSpan(clip, assets, doc.bpm).rate
             if (clip.keepPitch && !TimeStretcher.isUnity(rate)) {
-                app.messages.busy("Time-stretch ${clip.name}", null)
+                app.messages.busy("Time-stretch ${clip.name}", null, ::cancelExport)
                 withContext(Dispatchers.Default) { app.library.ensureStretched(clip.assetId, rate) }
             }
         }

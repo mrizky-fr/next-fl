@@ -1,5 +1,7 @@
 package id.nextfl.app.ui.visual
 
+import id.nextfl.app.ui.components.PANEL_PADDING
+import id.nextfl.app.ui.components.PANEL_GAP
 import androidx.compose.material.icons.rounded.CropSquare
 import androidx.compose.material.icons.rounded.CropPortrait
 import androidx.compose.material.icons.rounded.Crop169
@@ -10,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -131,12 +132,11 @@ fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: 
 private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
     fun update(transform: (VisualSettings) -> VisualSettings) = vm.updateVisual(transform)
     Column(
-        modifier = Modifier.width(300.dp).fillMaxHeight().background(Palette.Surface).verticalScroll(rememberScrollState()).padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.width(300.dp).fillMaxHeight().background(Palette.Surface).verticalScroll(rememberScrollState()).padding(PANEL_PADDING),
+        verticalArrangement = Arrangement.spacedBy(PANEL_GAP),
     ) {
         PanelSection("Template") {
             Text("Pulse Ring", style = TextStyles.Title)
-            Text("Logo bulat, ring spektrum, partikel dan komet berasap yang bergerak mengikuti beat.", style = TextStyles.Caption)
         }
         PanelSection("Rasio") {
             SegmentedControl(AspectRatio.entries, settings.aspect, { it.label }, { aspect -> update { it.copy(aspect = aspect) } }, icon = ::aspectIcon)
@@ -171,14 +171,11 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
 @Composable
 private fun ImagePickerRow(vm: EditorViewModel, kind: VisualImage, label: String, bitmap: Bitmap?, shape: Shape) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let { vm.setImage(kind, it) } }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(44.dp).clip(shape).background(Palette.Well)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
+        Box(Modifier.size(36.dp).clip(shape).background(Palette.Well)) {
             bitmap?.let { Image(it.asImageBitmap(), contentDescription = label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
         }
-        Column(Modifier.weight(1f)) {
-            Text(label, style = TextStyles.Body)
-            Text(if (bitmap == null) "Belum dipilih" else "${bitmap.width}×${bitmap.height}", style = TextStyles.Caption)
-        }
+        Text(label, style = TextStyles.Body, modifier = Modifier.weight(1f))
         FlatButton(if (bitmap == null) "Pilih" else "Ganti", Icons.Rounded.AddPhotoAlternate, {
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         })

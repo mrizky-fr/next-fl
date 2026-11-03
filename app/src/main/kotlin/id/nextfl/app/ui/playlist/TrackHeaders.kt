@@ -1,9 +1,17 @@
 package id.nextfl.app.ui.playlist
 
-import id.nextfl.app.ui.components.IconAction
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
+import kotlin.math.min
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,20 +62,45 @@ import kotlin.math.roundToInt
 
 private const val ROW_DP = 64
 private const val ROW_GAP_DP = 1
+private const val HEADER_TOGGLE_SCALE = 0.5f
+private const val LABEL_BOOST = 1.4f
+private val TOGGLE_TOUCH_PAD = 4.dp
 
 @Composable
-fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: String?) {
+fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: String?, geometry: TimelineGeometry) {
     var editing by remember { mutableStateOf<Track?>(null) }
+    var listHeight by remember { mutableFloatStateOf(0f) }
+    val viewport = vm.viewport
+    val maxScroll = geometry.maxScrollY(tracks.size, listHeight + geometry.metrics.rulerHeight)
+    // Drag list, shares timeline scroll
+    val scrollState = rememberScrollableState { delta ->
+        val before = viewport.scrollY
+        viewport.scrollY = (before - delta).coerceIn(0f, maxScroll)
+        before - viewport.scrollY
+    }
+    LaunchedEffect(maxScroll) { viewport.scrollY = viewport.scrollY.coerceIn(0f, maxScroll) }
     Column(Modifier.width(132.dp).fillMaxHeight().background(Palette.Bg)) {
         Row(
             modifier = Modifier.fillMaxWidth().height(26.dp).background(Palette.Well).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("TRACKS", style = TextStyles.Label, modifier = Modifier.weight(1f))
-            IconAction(Icons.Rounded.Add, "Track", vm::addTrack, showLabel = true)
         }
-        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
-            Column(Modifier.offset { IntOffset(0, -vm.viewport.scrollY.roundToInt()) }) {
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .clipToBounds()
+                .onSizeChanged { listHeight = it.height.toFloat() }
+                .scrollable(scrollState, Orientation.Vertical),
+        ) {
+            // Unbounded so offscreen rows keep height
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.Top, unbounded = true)
+                    .offset { IntOffset(0, -viewport.scrollY.roundToInt()) },
+            ) {
                 tracks.forEach { track ->
                     TrackHeaderRow(
                         track = track,
@@ -79,14 +111,7 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
                         onSolo = { vm.updateTrack(track.id) { it.copy(solo = !it.solo) } },
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(40.dp).clickable(role = Role.Button, onClick = vm::addTrack).padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(Icons.Rounded.Add, null, tint = Palette.TextMuted, modifier = Modifier.size(16.dp))
-                    Text("Tambah track", style = TextStyles.Caption)
-                }
+                FlatButton("Tambah track", Icons.Rounded.Add, vm::addTrack, Modifier.fillMaxWidth().padding(6.dp))
             }
         }
     }
@@ -111,26 +136,40 @@ private fun TrackHeaderRow(track: Track, selected: Boolean, onSelect: () -> Unit
             Text(track.name, style = TextStyles.Body.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("Tahan untuk edit", style = TextStyles.Caption.copy(fontSize = 9.sp, color = Palette.TextMuted), maxLines = 1)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            SmallToggle("M", track.mute, Palette.Mute, onMute)
-            SmallToggle("S", track.solo, Palette.Solo, onSolo)
+        Column {
+            SmallToggle("M", track.mute, Palette.Mute, scale = HEADER_TOGGLE_SCALE, touchPadding = TOGGLE_TOUCH_PAD, onClick = onMute)
+            SmallToggle("S", track.solo, Palette.Solo, scale = HEADER_TOGGLE_SCALE, touchPadding = TOGGLE_TOUCH_PAD, onClick = onSolo)
         }
     }
     Box(Modifier.fillMaxWidth().height(ROW_GAP_DP.dp))
 }
 
 @Composable
-fun SmallToggle(label: String, active: Boolean, activeColor: Color, onClick: () -> Unit) {
-    val s = LocalControlScale.current
+fun SmallToggle(
+    label: String,
+    active: Boolean,
+    activeColor: Color,
+    scale: Float = 1f,
+    touchPadding: Dp = 0.dp,
+    onClick: () -> Unit,
+) {
+    val s = LocalControlScale.current * scale
     Box(
+        // Touch area wider than box
         modifier = Modifier
+            .clickable(interactionSource = null, indication = null, role = Role.Checkbox, onClick = onClick)
+            .padding(touchPadding)
             .size(Dimens.Control * s)
             .clip(RoundedCornerShape(Dimens.RadiusSmall))
-            .background(if (active) activeColor else Palette.Well)
-            .clickable(role = Role.Checkbox, onClick = onClick),
+            .background(if (active) activeColor else Palette.Well),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (active) Palette.Bg else Palette.TextSecondary, fontSize = buttonLabelSize(), fontWeight = FontWeight.Bold)
+        Text(
+            label,
+            color = if (active) Palette.Bg else Palette.TextSecondary,
+            fontSize = buttonLabelSize() * min(1f, scale * LABEL_BOOST),
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

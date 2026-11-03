@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -86,7 +85,6 @@ fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, ca
             if (playing) "Pause" else "Play",
             vm::togglePlay,
             variant = ButtonVariant.ACCENT,
-            modifier = Modifier.width(52.dp),
         )
         TimeDisplay(vm, bpm)
         BpmDisplay(bpm) { dialog = TopDialog.BPM }

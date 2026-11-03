@@ -5,10 +5,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -80,29 +80,34 @@ fun BottomBar(vm: EditorViewModel, ui: UiState, selectedClipId: String?) {
     val importAudio = rememberAudioImporter(vm)
     val timelineView = ui.view == AppView.PLAYLIST || ui.view == AppView.SPLIT
     Scaled(BOTTOM_BAR_SCALE) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            IconAction(Icons.Rounded.Add, "Audio", importAudio, variant = ButtonVariant.ACCENT, showLabel = true)
-            IconAction(Icons.Rounded.LibraryMusic, "Library", { vm.updateUi { it.copy(libraryOpen = !it.libraryOpen) } }, active = ui.libraryOpen)
-            ToolbarGap()
-            val hasClip = selectedClipId != null
-            IconAction(Icons.Rounded.ContentCut, "Potong di playhead", { selectedClipId?.let(vm::splitClipAtPlayhead) }, enabled = hasClip)
-            IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
-            IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
+        Box(Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).padding(horizontal = 8.dp)) {
+            ToolGroup(Modifier.align(Alignment.CenterStart)) {
+                IconAction(Icons.Rounded.Add, "Audio", importAudio, variant = ButtonVariant.ACCENT, showLabel = true)
+                IconAction(Icons.Rounded.LibraryMusic, "Library", { vm.updateUi { it.copy(libraryOpen = !it.libraryOpen) } }, active = ui.libraryOpen)
+                ToolbarGap()
+                val hasClip = selectedClipId != null
+                IconAction(Icons.Rounded.ContentCut, "Potong di playhead", { selectedClipId?.let(vm::splitClipAtPlayhead) }, enabled = hasClip)
+                IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
+                IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
+            }
             if (timelineView) {
-                ToolbarGap()
-                Icon(Icons.Rounded.GridOn, contentDescription = "Snap", tint = Palette.TextMuted, modifier = Modifier.size(buttonIconSize()))
-                SegmentedControl(SnapMode.entries, ui.snap, { it.label }, { mode -> vm.updateUi { it.copy(snap = mode) } })
-                ToolbarGap()
-                IconAction(Icons.Rounded.ZoomOut, "Perkecil", { vm.viewport.zoomAround(0f, 1 / ZOOM_STEP, density) })
-                IconAction(Icons.Rounded.ZoomIn, "Perbesar", { vm.viewport.zoomAround(0f, ZOOM_STEP, density) })
-                IconAction(Icons.Rounded.MyLocation, "Ikuti playhead", { vm.updateUi { it.copy(follow = !it.follow) } }, active = ui.follow)
+                ToolGroup(Modifier.align(Alignment.Center)) {
+                    Icon(Icons.Rounded.GridOn, contentDescription = "Snap", tint = Palette.TextMuted, modifier = Modifier.size(buttonIconSize()))
+                    SegmentedControl(SnapMode.entries, ui.snap, { it.label }, { mode -> vm.updateUi { it.copy(snap = mode) } })
+                }
+                ToolGroup(Modifier.align(Alignment.CenterEnd)) {
+                    IconAction(Icons.Rounded.ZoomOut, "Perkecil", { vm.viewport.zoomAround(0f, 1 / ZOOM_STEP, density) })
+                    IconAction(Icons.Rounded.ZoomIn, "Perbesar", { vm.viewport.zoomAround(0f, ZOOM_STEP, density) })
+                    IconAction(Icons.Rounded.MyLocation, "Ikuti playhead", { vm.updateUi { it.copy(follow = !it.follow) } }, active = ui.follow)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ToolGroup(modifier: Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), content = content)
 }
 
 @Composable

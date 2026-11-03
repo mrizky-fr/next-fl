@@ -1,5 +1,6 @@
 package id.nextfl.app.ui.components
 
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -159,6 +160,20 @@ fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, hint
     }
 }
 
+val PANEL_PADDING = 10.dp
+val PANEL_GAP = 5.dp
+private val HEADER_HEIGHT = 14.dp
+
+/** Short row; actions overflow invisibly. */
+@Composable
+fun PanelHeader(content: @Composable RowScope.() -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(HEADER_HEIGHT).wrapContentHeight(unbounded = true),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
 /** Borderless card section. */
 @Composable
 fun PanelSection(
@@ -168,10 +183,10 @@ fun PanelSection(
     content: @Composable () -> Unit,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().clip(Shape).background(Palette.Card).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth().clip(Shape).background(Palette.Card).padding(PANEL_PADDING),
+        verticalArrangement = Arrangement.spacedBy(PANEL_GAP),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().heightIn(min = 20.dp)) {
+        PanelHeader {
             Text(title.uppercase(), style = TextStyles.Label, modifier = Modifier.weight(1f))
             action?.invoke()
         }

@@ -1,5 +1,8 @@
 package id.nextfl.app.ui.mixer
 
+import id.nextfl.app.ui.components.PanelHeader
+import id.nextfl.app.ui.components.PANEL_PADDING
+import id.nextfl.app.ui.components.PANEL_GAP
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -58,12 +60,12 @@ private const val GRAPH_POINTS = 96
 fun FxPanel(vm: EditorViewModel, track: Track) {
     var editing by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier.width(380.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.width(380.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(PANEL_PADDING),
+        verticalArrangement = Arrangement.spacedBy(PANEL_GAP),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PanelHeader {
             Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(Color(track.color)))
-            Text(track.name, style = TextStyles.Title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(track.name, style = TextStyles.Title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 8.dp))
             IconAction(Icons.Rounded.Edit, "Edit track", { editing = true })
         }
         EqSection(vm, track)

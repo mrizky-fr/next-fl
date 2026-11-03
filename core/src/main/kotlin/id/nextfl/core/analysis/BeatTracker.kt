@@ -45,9 +45,9 @@ class BeatTracker {
         const val MIN_HISTORY_FRAMES = 8
         const val MIN_BEAT_INTERVAL = 0.22
         const val BASE_THRESHOLD = 1.0
-        const val SENSITIVITY_SPAN = 0.6
+        const val SENSITIVITY_SPAN = 0.4
         const val MIN_ENERGY = 3e-5
-        const val MIN_STRENGTH = 0.3
+        const val MIN_STRENGTH = 0.45
         const val STRENGTH_BIAS = 0.4
         val NO_BEAT = BeatResult(false, 0f)
     }

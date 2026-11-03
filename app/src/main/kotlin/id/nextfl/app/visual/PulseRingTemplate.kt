@@ -51,9 +51,9 @@ class LogoBadge(typeface: Typeface) {
         canvas.drawCircle(cx, cy, radius, stroke)
     }
 
-    // Transparent logos fit inside
+    // Transparent logos fill circle
     private fun drawLogo(canvas: Canvas, logo: Bitmap, cx: Float, cy: Float, radius: Float) {
-        val box = radius * 2 * if (transparent) CONTAIN_SCALE else 1f
+        val box = radius * 2
         val scale = if (transparent) min(box / logo.width, box / logo.height) else max(box / logo.width, box / logo.height)
         val w = logo.width * scale
         val h = logo.height * scale
@@ -62,7 +62,7 @@ class LogoBadge(typeface: Typeface) {
     }
 
     private fun drawPlaceholder(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        text.textSize = radius * 0.62f
+        text.textSize = radius * PLACEHOLDER_SIZE
         canvas.drawText("DJ", cx, cy + text.textSize * 0.36f, text)
     }
 
@@ -78,7 +78,7 @@ class LogoBadge(typeface: Typeface) {
     }
 
     private companion object {
-        const val CONTAIN_SCALE = 0.84f
+        const val PLACEHOLDER_SIZE = 0.9f
         const val SAMPLES = 12
         const val OPAQUE = 250
     }
@@ -90,7 +90,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private val background = BackgroundLayer()
     private val particles = ParticleField()
     private val comets = CometField()
-    private val ring = SpectrumRing()
+    private val hills = BeatHills()
     private val logo = LogoBadge(typeface)
     private val random = Random(3)
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -129,9 +129,10 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         comets.draw(canvas, particleColor, unit)
 
-        ring.update(frame.bands, frame.kick, dt)
-        ring.draw(canvas, cx, cy, radius, ringColor, settings.sensitivity)
-        logo.draw(canvas, cx, cy, radius * (1f + frame.kick * 0.05f * settings.sensitivity), ringColor)
+        val pulsed = radius * (1f + frame.kick * LOGO_PULSE * settings.sensitivity)
+        hills.update(frame.beat, frame.beatStrength, dt)
+        hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
+        logo.draw(canvas, cx, cy, pulsed, ringColor)
         drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
 
         if (flash > 0.01f) {
@@ -160,5 +161,6 @@ class PulseRingTemplate(typeface: Typeface) {
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f
         const val COMET_COUNT = 6
+        const val LOGO_PULSE = 0.05f
     }
 }

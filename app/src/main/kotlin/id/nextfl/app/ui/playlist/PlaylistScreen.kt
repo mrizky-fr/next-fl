@@ -19,7 +19,7 @@ fun PlaylistScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing
 
     Row(Modifier.fillMaxSize()) {
         Row(Modifier.weight(1f).fillMaxHeight()) {
-            TrackHeaders(vm, state.doc.tracks, state.selectedTrackId)
+            TrackHeaders(vm, state.doc.tracks, state.selectedTrackId, geometry)
             TimelineCanvas(vm, state, ui, playing, geometry, Modifier.weight(1f))
         }
         selectedClip?.let { ClipInspector(vm, state, it) }
