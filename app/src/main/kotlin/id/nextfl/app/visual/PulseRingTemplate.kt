@@ -89,7 +89,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private val sprite = GlowSprite()
     private val background = BackgroundLayer()
     private val particles = ParticleField()
-    private val streaks = StreakField()
+    private val comets = CometField()
     private val ring = SpectrumRing()
     private val logo = LogoBadge(typeface)
     private val random = Random(3)
@@ -127,11 +127,8 @@ class PulseRingTemplate(typeface: Typeface) {
         val cx = width / 2f + shakeX
         val cy = height / 2f + shakeY
         val radius = unit * RING_RADIUS
-        if (settings.streaks && frame.beat && frame.beatStrength > STREAK_THRESHOLD) {
-            streaks.spawn(cx, cy, radius, unit, frame.beatStrength)
-        }
-        streaks.update(dt)
-        streaks.draw(canvas, sprite, particleColor, unit)
+        comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
+        comets.draw(canvas, sprite, particleColor, unit)
 
         ring.update(frame.bands, dt)
         ring.draw(canvas, cx, cy, radius, ringColor, settings.sensitivity, rotation)
@@ -164,7 +161,7 @@ class PulseRingTemplate(typeface: Typeface) {
         const val SHAKE_DECAY = 9f
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f
-        const val STREAK_THRESHOLD = 0.4f
+        const val COMET_COUNT = 6
         const val ROTATION_SPEED = 0.05f
     }
 }

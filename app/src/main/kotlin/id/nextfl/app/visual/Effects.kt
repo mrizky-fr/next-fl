@@ -65,75 +65,165 @@ class ParticleField(private val random: Random = Random(7)) {
     }
 }
 
-/** Beat-fired light streaks. */
-class StreakField(private val random: Random = Random(11)) {
-    private class Streak(var x: Float, var y: Float, val dx: Float, val dy: Float, val speed: Float, var life: Float, val length: Float, val head: Float)
-    private class Shard(var x: Float, var y: Float, val dx: Float, val dy: Float, var angle: Float, val spin: Float, var life: Float, val size: Float)
-
-    private val streaks = ArrayList<Streak>()
-    private val shards = ArrayList<Shard>()
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val path = Path()
-
-    // Mirrored pair through the center
-    fun spawn(cx: Float, cy: Float, radius: Float, unit: Float, strength: Float) {
-        if (streaks.size > MAX_STREAKS) return
-        val angle = random.nextFloat() * 2 * PI.toFloat()
-        val tilt = (random.nextFloat() - 0.5f) * 0.6f
-        for (side in 0..1) {
-            val a = angle + side * PI.toFloat()
-            val dir = a + tilt
-            val start = radius * (1.25f + random.nextFloat() * 0.4f)
-            val x = cx + cos(a) * start
-            val y = cy + sin(a) * start
-            val speed = unit * (1.1f + strength * 1.4f)
-            streaks.add(Streak(x, y, cos(dir), sin(dir), speed, STREAK_LIFE, unit * (0.28f + strength * 0.25f), unit * (0.007f + strength * 0.006f)))
-            if (random.nextFloat() < 0.6f) {
-                shards.add(Shard(x, y, cos(dir) * unit * 0.25f, sin(dir) * unit * 0.25f, random.nextFloat() * 6f, (random.nextFloat() - 0.5f) * 4f, SHARD_LIFE, unit * 0.018f))
-            }
-        }
+/** Triangle comets with smoky tails. */
+class CometField(private val random: Random = Random(11)) {
+    private class Comet(val size: Float, val seed: Float) {
+        var x = 0f
+        var y = 0f
+        var heading = 0f
+        var turn = 0f
+        var spin = 0f
+        var angle = 0f
+        var travelled = 0f
+        val trailX = FloatArray(TRAIL_POINTS)
+        val trailY = FloatArray(TRAIL_POINTS)
+        val trailAge = FloatArray(TRAIL_POINTS)
+        var trailStart = 0
+        var trailCount = 0
     }
 
-    fun update(dt: Float) {
-        streaks.forEach { it.x += it.dx * it.speed * dt; it.y += it.dy * it.speed * dt; it.life -= dt }
-        shards.forEach { it.x += it.dx * dt; it.y += it.dy * dt; it.angle += it.spin * dt; it.life -= dt }
-        streaks.removeAll { it.life <= 0f }
-        shards.removeAll { it.life <= 0f }
+    private val comets = ArrayList<Comet>()
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        color = Color.WHITE
+    }
+    private val path = Path()
+    private var boost = 0f
+    private var width = 0
+    private var height = 0
+
+    // Beat kicks speed, friction slows
+    fun update(count: Int, dt: Float, beat: Boolean, strength: Float, energy: Float, width: Int, height: Int) {
+        if (width != this.width || height != this.height) {
+            comets.clear()
+            this.width = width
+            this.height = height
+        }
+        val unit = min(width, height).toFloat()
+        while (comets.size < count) comets.add(spawn(unit))
+        while (comets.size > count) comets.removeAt(comets.lastIndex)
+        if (beat) boost = max(boost, strength)
+        boost *= exp(-dt * BOOST_DECAY)
+        val speed = unit * (CRUISE_SPEED + boost * BURST_SPEED + energy * ENERGY_SPEED)
+        for (comet in comets) move(comet, speed, dt, unit)
     }
 
     fun draw(canvas: Canvas, sprite: GlowSprite, color: Int, unit: Float) {
-        for (streak in streaks) {
-            val fade = (streak.life / STREAK_LIFE).pow(0.6f)
-            for (i in 0 until DOTS) {
-                val t = i / (DOTS - 1f)
-                val back = streak.length * t.pow(1.35f)
-                val radius = streak.head * (1f - t * 0.85f)
-                val alpha = (1f - t).pow(1.2f) * fade
-                sprite.draw(canvas, streak.x - streak.dx * back, streak.y - streak.dy * back, radius * 2.6f, color, alpha * 0.5f)
-                sprite.draw(canvas, streak.x - streak.dx * back, streak.y - streak.dy * back, radius, Color.WHITE, alpha)
-            }
-        }
-        stroke.strokeWidth = unit * 0.0035f
-        for (shard in shards) {
-            stroke.color = Color.WHITE
-            stroke.alpha = (255 * (shard.life / SHARD_LIFE)).toInt().coerceIn(0, 255)
-            path.reset()
-            for (k in 0..2) {
-                val a = shard.angle + k * 2.0944f
-                val px = shard.x + cos(a) * shard.size
-                val py = shard.y + sin(a) * shard.size
-                if (k == 0) path.moveTo(px, py) else path.lineTo(px, py)
-            }
-            path.close()
-            canvas.drawPath(path, stroke)
+        stroke.strokeWidth = unit * HEAD_STROKE
+        for (comet in comets) {
+            drawSmoke(canvas, sprite, comet, color, unit)
+            drawHead(canvas, sprite, comet, color)
         }
     }
 
+    private fun move(comet: Comet, speed: Float, dt: Float, unit: Float) {
+        comet.turn = (comet.turn + (random.nextFloat() - 0.5f) * TURN_JITTER * dt).coerceIn(-MAX_TURN, MAX_TURN)
+        comet.heading += comet.turn * dt
+        val step = speed * dt
+        comet.x += cos(comet.heading) * step
+        comet.y += sin(comet.heading) * step
+        comet.angle += (comet.spin + boost * SPIN_BOOST) * dt
+        ageTrail(comet, dt)
+        comet.travelled += step
+        if (comet.travelled >= unit * TRAIL_SPACING) {
+            pushTrail(comet)
+            comet.travelled = 0f
+        }
+        wrap(comet, unit)
+    }
+
+    private fun wrap(comet: Comet, unit: Float) {
+        val margin = unit * EDGE_MARGIN
+        val wrapped = when {
+            comet.x < -margin -> { comet.x = width + margin; true }
+            comet.x > width + margin -> { comet.x = -margin; true }
+            comet.y < -margin -> { comet.y = height + margin; true }
+            comet.y > height + margin -> { comet.y = -margin; true }
+            else -> false
+        }
+        if (wrapped) comet.trailCount = 0
+    }
+
+    private fun pushTrail(comet: Comet) {
+        val index = (comet.trailStart + comet.trailCount) % TRAIL_POINTS
+        comet.trailX[index] = comet.x
+        comet.trailY[index] = comet.y
+        comet.trailAge[index] = 0f
+        if (comet.trailCount < TRAIL_POINTS) comet.trailCount++ else comet.trailStart = (comet.trailStart + 1) % TRAIL_POINTS
+    }
+
+    private fun ageTrail(comet: Comet, dt: Float) {
+        for (i in 0 until comet.trailCount) comet.trailAge[(comet.trailStart + i) % TRAIL_POINTS] += dt
+        while (comet.trailCount > 0 && comet.trailAge[comet.trailStart] > TRAIL_LIFE) {
+            comet.trailStart = (comet.trailStart + 1) % TRAIL_POINTS
+            comet.trailCount--
+        }
+    }
+
+    // Puffs widen and fade like smoke
+    private fun drawSmoke(canvas: Canvas, sprite: GlowSprite, comet: Comet, color: Int, unit: Float) {
+        for (i in 0 until comet.trailCount) {
+            val index = (comet.trailStart + i) % TRAIL_POINTS
+            val age = comet.trailAge[index]
+            val t = (age / TRAIL_LIFE).coerceIn(0f, 1f)
+            val radius = comet.size * (SMOKE_START + t * SMOKE_GROWTH)
+            val alpha = (1f - t).pow(1.6f) * SMOKE_ALPHA
+            val driftX = sin(comet.seed + age * SMOKE_SWAY_RATE) * unit * SMOKE_SWAY * t
+            val driftY = -unit * SMOKE_RISE * t
+            sprite.draw(canvas, comet.trailX[index] + driftX, comet.trailY[index] + driftY, radius, color, alpha)
+        }
+    }
+
+    private fun drawHead(canvas: Canvas, sprite: GlowSprite, comet: Comet, color: Int) {
+        val pulse = 1f + boost * HEAD_PULSE
+        sprite.draw(canvas, comet.x, comet.y, comet.size * HEAD_GLOW * pulse, color, HEAD_GLOW_ALPHA + boost * 0.3f)
+        path.reset()
+        for (k in 0..2) {
+            val a = comet.angle + k * THIRD_TURN
+            val px = comet.x + cos(a) * comet.size * pulse
+            val py = comet.y + sin(a) * comet.size * pulse
+            if (k == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        path.close()
+        stroke.alpha = HEAD_ALPHA
+        canvas.drawPath(path, stroke)
+    }
+
+    private fun spawn(unit: Float): Comet {
+        val comet = Comet(size = unit * (0.014f + random.nextFloat() * 0.012f), seed = random.nextFloat() * 10f)
+        comet.x = random.nextFloat() * width
+        comet.y = random.nextFloat() * height
+        comet.heading = random.nextFloat() * 2 * PI.toFloat()
+        comet.angle = random.nextFloat() * 2 * PI.toFloat()
+        comet.spin = (random.nextFloat() - 0.5f) * 1.2f
+        return comet
+    }
+
     private companion object {
-        const val DOTS = 22
-        const val MAX_STREAKS = 12
-        const val STREAK_LIFE = 0.9f
-        const val SHARD_LIFE = 1.4f
+        const val TRAIL_POINTS = 120
+        const val TRAIL_LIFE = 1.3f
+        const val TRAIL_SPACING = 0.0035f
+        const val CRUISE_SPEED = 0.035f
+        const val BURST_SPEED = 0.75f
+        const val ENERGY_SPEED = 0.08f
+        const val BOOST_DECAY = 3.2f
+        const val TURN_JITTER = 3f
+        const val MAX_TURN = 0.9f
+        const val SPIN_BOOST = 5f
+        const val EDGE_MARGIN = 0.12f
+        const val SMOKE_START = 1.1f
+        const val SMOKE_GROWTH = 3.4f
+        const val SMOKE_ALPHA = 0.16f
+        const val SMOKE_SWAY = 0.012f
+        const val SMOKE_SWAY_RATE = 1.7f
+        const val SMOKE_RISE = 0.018f
+        const val HEAD_STROKE = 0.0035f
+        const val HEAD_PULSE = 0.25f
+        const val HEAD_GLOW = 1.8f
+        const val HEAD_GLOW_ALPHA = 0.3f
+        const val HEAD_ALPHA = 235
+        const val THIRD_TURN = 2.0943952f
     }
 }
 

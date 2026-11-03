@@ -131,7 +131,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
     ) {
         PanelSection("Template") {
             Text("Pulse Ring", style = TextStyles.Title)
-            Text("Logo bulat, ring spektrum, partikel dan kilatan yang bergerak mengikuti beat.", style = TextStyles.Caption)
+            Text("Logo bulat, ring spektrum, partikel dan komet berasap yang bergerak mengikuti beat.", style = TextStyles.Caption)
         }
         PanelSection("Rasio") {
             SegmentedControl(AspectRatio.entries, settings.aspect, { it.label }, { aspect -> update { it.copy(aspect = aspect) } })
@@ -152,7 +152,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
-            ToggleRow("Kilatan garis cahaya", settings.streaks, { on -> update { it.copy(streaks = on) } })
+            ToggleRow("Komet segitiga", settings.streaks, { on -> update { it.copy(streaks = on) } })
             ToggleRow("Goyang saat beat", settings.shake, { on -> update { it.copy(shake = on) } })
         }
         PanelSection("Background") {
