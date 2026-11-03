@@ -134,9 +134,17 @@ class PlaybackController(
 class VisualAnalysis(private val playback: PlaybackController) {
     private val analyzer = SpectrumAnalyzer(playback.engine.sampleRate)
     private val window = FloatArray(analyzer.fftSize)
+    private val lookahead = (LOOKAHEAD_SECONDS * playback.engine.sampleRate).toLong()
 
     fun next(dt: Float, sensitivity: Float): AudioFrame {
-        if (playback.isPlaying.value) playback.engine.tap.read(playback.audibleOutputFrame(), window) else window.fill(0f)
+        if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(), window) else window.fill(0f)
         return analyzer.analyze(window, dt, sensitivity)
+    }
+
+    // Offsets FFT and display lag
+    private fun lookaheadEnd(): Long = minOf(playback.audibleOutputFrame() + lookahead, playback.engine.tap.written)
+
+    private companion object {
+        const val LOOKAHEAD_SECONDS = 0.06
     }
 }

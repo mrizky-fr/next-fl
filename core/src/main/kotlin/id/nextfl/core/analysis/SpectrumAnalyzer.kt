@@ -113,7 +113,7 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
         private const val TREBLE_HIGH = 12_000f
         private const val MIN_DB = -90f
         private const val MAX_DB = -20f
-        private const val SMOOTHING = 0.45f
+        private const val SMOOTHING = 0.2f
         private const val KICK_DECAY = 7f
 
         private fun blackman(i: Int, n: Int): Float {

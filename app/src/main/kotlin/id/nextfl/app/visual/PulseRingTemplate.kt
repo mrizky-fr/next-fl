@@ -127,7 +127,7 @@ class PulseRingTemplate(typeface: Typeface) {
         val cy = height / 2f + shakeY
         val radius = unit * RING_RADIUS
         comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
-        comets.draw(canvas, sprite, particleColor, unit)
+        comets.draw(canvas, particleColor, unit)
 
         ring.update(frame.bands, frame.kick, dt)
         ring.draw(canvas, cx, cy, radius, ringColor, settings.sensitivity)
