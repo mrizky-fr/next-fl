@@ -187,18 +187,38 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
         }
     }
 
+    // Name trims per letter, badge yields first
     private fun drawClipLabel(canvas: Canvas, scene: TimelineScene, clip: Clip, span: ClipSpan, left: Float, right: Float, top: Float) {
-        text.color = Color.WHITE
         val baseline = top + metrics.clipHeader - 4 * density
-        canvas.drawText(clip.name, max(left, 0f) + 6 * density, baseline, text)
+        val start = max(left, 0f) + LABEL_PADDING * density
+        val end = min(right, scene.width) - LABEL_PADDING * density
+        if (end - start < MIN_LABEL * density) return
+        var nameEnd = end
         val badge = when {
             scene.isStretching(clip, span.rate) -> "stretch…"
             abs(span.rate - 1) > 1e-3 -> String.format(Locale.ROOT, "×%.2f", span.rate)
             else -> null
-        } ?: return
-        val width = text.measureText(badge)
-        text.color = Color.argb(220, 255, 255, 255)
-        canvas.drawText(badge, min(right, scene.width) - width - 6 * density, baseline, text)
+        }
+        if (badge != null) {
+            val badgeWidth = text.measureText(badge)
+            if (end - start > badgeWidth + BADGE_ROOM * density) {
+                text.color = Color.argb(220, 255, 255, 255)
+                canvas.drawText(badge, end - badgeWidth, baseline, text)
+                nameEnd = end - badgeWidth - LABEL_PADDING * density
+            }
+        }
+        val label = ellipsize(clip.name, nameEnd - start)
+        if (label.isEmpty()) return
+        text.color = Color.WHITE
+        canvas.drawText(label, start, baseline, text)
+    }
+
+    private fun ellipsize(value: String, maxWidth: Float): String {
+        if (text.measureText(value) <= maxWidth) return value
+        val room = maxWidth - text.measureText(ELLIPSIS)
+        if (room <= 0f) return ""
+        val count = text.breakText(value, true, room, null)
+        return if (count == 0) "" else value.take(count).trimEnd() + ELLIPSIS
     }
 
     private fun drawHandles(canvas: Canvas, left: Float, right: Float, top: Float, bottom: Float) {
@@ -273,6 +293,10 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
 
     private companion object {
         const val WAVE_FILL = 0.92f
+        const val LABEL_PADDING = 6f
+        const val MIN_LABEL = 12f
+        const val BADGE_ROOM = 48f
+        const val ELLIPSIS = "…"
         const val MAX_WAVE_GAIN = 2f
         val BACKGROUND = Color.parseColor("#131517")
         val ROW_EVEN = Color.parseColor("#17191C")
