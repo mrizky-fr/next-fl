@@ -51,6 +51,7 @@ import id.nextfl.app.editor.UiState
 import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
+import id.nextfl.app.ui.components.Scaled
 import id.nextfl.app.ui.components.SegmentedControl
 import id.nextfl.app.ui.components.ToolbarGap
 import id.nextfl.app.ui.theme.Dimens
@@ -58,6 +59,9 @@ import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
 
 private const val ZOOM_STEP = 1.4f
+
+// Compact toolbar: 20% smaller
+private const val BOTTOM_BAR_SCALE = 0.8f
 
 @Composable
 fun PlaylistScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing: Boolean) {
@@ -88,6 +92,7 @@ fun PlaylistScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing
 @Composable
 private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: String?, onImport: () -> Unit) {
     val density = LocalDensity.current.density
+    Scaled(BOTTOM_BAR_SCALE) {
     Row(
         modifier = Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -107,6 +112,7 @@ private fun PlaylistToolbar(vm: EditorViewModel, ui: UiState, selectedClipId: St
         IconAction(Icons.Rounded.ZoomOut, "Perkecil", { vm.viewport.zoomAround(0f, 1 / ZOOM_STEP, density) })
         IconAction(Icons.Rounded.ZoomIn, "Perbesar", { vm.viewport.zoomAround(0f, ZOOM_STEP, density) })
         IconAction(Icons.Rounded.MyLocation, "Ikuti playhead", { vm.updateUi { it.copy(follow = !it.follow) } }, active = ui.follow)
+    }
     }
 }
 

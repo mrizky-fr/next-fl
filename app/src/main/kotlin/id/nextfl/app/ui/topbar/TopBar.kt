@@ -48,6 +48,7 @@ import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.IconAction
 import id.nextfl.app.ui.components.LcdBox
+import id.nextfl.app.ui.components.Scaled
 import id.nextfl.app.ui.components.SegmentedControl
 import id.nextfl.app.ui.components.rememberFrameTick
 import id.nextfl.app.ui.theme.Dimens
@@ -57,9 +58,13 @@ import id.nextfl.app.ui.theme.TextStyles
 
 private enum class TopDialog { BPM, EXPORT, PROJECT }
 
+// Compact header: 25% smaller
+private const val TOP_BAR_SCALE = 0.75f
+
 @Composable
 fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, canRedo: Boolean, playing: Boolean) {
     var dialog by remember { mutableStateOf<TopDialog?>(null) }
+    Scaled(TOP_BAR_SCALE) {
     Row(
         modifier = Modifier.fillMaxWidth().height(Dimens.TopBarHeight).background(Palette.Surface).padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -89,6 +94,7 @@ fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, ca
         IconAction(Icons.AutoMirrored.Rounded.Redo, "Redo", vm::redo, enabled = canRedo)
         IconAction(Icons.Rounded.FileDownload, "Export", { dialog = TopDialog.EXPORT })
         IconAction(Icons.Rounded.MoreVert, "Proyek", { dialog = TopDialog.PROJECT })
+    }
     }
 
     when (dialog) {
