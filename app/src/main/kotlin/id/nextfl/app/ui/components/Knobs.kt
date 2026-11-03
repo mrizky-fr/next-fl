@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -132,11 +133,12 @@ fun Knob(
     val emit by rememberUpdatedState { p: Float -> onChange(fromNormalized(p, range, scale)) }
     val reset by rememberUpdatedState { onChange(default) }
     Column(
-        modifier = modifier.width(58.dp).alpha(if (enabled) 1f else 0.4f),
+        // Grows to fit long labels
+        modifier = modifier.widthIn(min = 58.dp).alpha(if (enabled) 1f else 0.4f),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(label.uppercase(), style = TextStyles.Label, maxLines = 1)
+        Text(label.uppercase(), style = TextStyles.Label, maxLines = 1, softWrap = false)
         Canvas(
             modifier = Modifier
                 .size(size)
