@@ -40,7 +40,6 @@ import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
-import id.nextfl.app.ui.components.Knob
 import id.nextfl.app.ui.components.ValueSlider
 import id.nextfl.app.ui.components.ModalDialog
 import id.nextfl.app.ui.components.PanelSection
@@ -96,11 +95,9 @@ private fun TempoSection(vm: EditorViewModel, clip: Clip, asset: AudioAsset?, ra
             onChange = { checked -> vm.updateClip(clip.id) { it.copy(syncTempo = checked) } },
         )
         if (!clip.syncTempo) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Knob("Speed", clip.speed.toFloat(), 0.5f..2f, 1f, { v ->
-                    vm.updateClip(clip.id, "speed:${clip.id}") { it.copy(speed = Math.round(v * 100) / 100.0) }
-                }, { "×%.2f".format(it) })
-            }
+            ValueSlider("Speed", clip.speed.toFloat(), 0.5f..2f, { v ->
+                vm.updateClip(clip.id, "speed:${clip.id}") { it.copy(speed = Math.round(v * 100) / 100.0) }
+            }, { "×%.2f".format(it) }, origin = 1f)
         }
         ToggleRow(
             label = "Kunci nada",
