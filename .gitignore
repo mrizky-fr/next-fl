@@ -18,3 +18,7 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE compiled output
+bin/
+**/bin/
