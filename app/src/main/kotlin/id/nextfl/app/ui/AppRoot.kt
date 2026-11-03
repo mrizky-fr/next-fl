@@ -87,7 +87,9 @@ private fun Editor(vm: EditorViewModel) {
                 AppView.VISUAL -> VisualScreen(vm, ui, playing)
                 AppView.SPLIT -> SplitScreen(vm, state, ui, playing)
             }
+            if (ui.libraryOpen && !fullscreenVisual) LibraryPanel(vm, state.assets.values.toList())
         }
+        if (!fullscreenVisual) BottomBar(vm, ui, state.selectedClipId)
     }
 }
 
