@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import id.nextfl.core.analysis.AudioFrame
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.exp
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -90,6 +91,9 @@ class PulseRingTemplate(typeface: Typeface) {
     private val particles = ParticleField()
     private val comets = CometField()
     private val hills = BeatHills()
+    private val ripples = RippleField()
+    private val pendulum = Pendulum()
+    private val glitch = Glitch()
     private val logo = LogoBadge(typeface)
     private val random = Random(3)
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -103,6 +107,18 @@ class PulseRingTemplate(typeface: Typeface) {
     private var shake = 0f
     private var flash = 0f
 
+    // Per-frame scene, redrawn by glitch
+    private var settings = VisualSettings()
+    private var width = 0
+    private var height = 0
+    private var unit = 0f
+    private var shakeX = 0f
+    private var shakeY = 0f
+    private var zoom = 1f
+    private var kick = 0f
+    private val drawCenter: (Canvas) -> Unit = { centerGroup(it) }
+    private val drawSlice: (Canvas) -> Unit = { scene(it, split = false) }
+
     fun setImages(background: Bitmap?, logoImage: Bitmap?) {
         backgroundImage = background
         logo.set(logoImage)
@@ -110,37 +126,63 @@ class PulseRingTemplate(typeface: Typeface) {
 
     fun draw(canvas: Canvas, width: Int, height: Int, frame: AudioFrame, dt: Float, settings: VisualSettings) {
         if (width <= 0 || height <= 0) return
-        val unit = min(width, height).toFloat()
-        val ringColor = settings.ringColor.toInt()
-        val particleColor = settings.particleColor.toInt()
+        this.settings = settings
+        this.width = width
+        this.height = height
+        unit = min(width, height).toFloat()
+        kick = frame.kick
         react(frame, dt, settings)
-        val shakeX = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
-        val shakeY = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
-        val zoom = 1f + frame.bass * 0.03f * settings.sensitivity + frame.kick * 0.02f
-
-        background.draw(canvas, width, height, backgroundImage, settings, zoom, shakeX * 0.5f, shakeY * 0.5f)
-        particles.update(settings.particleCount, dt, frame.energy, frame.kick)
-        particles.draw(canvas, sprite, width, height, particleColor, frame.kick)
-
-        val cx = width / 2f + shakeX
-        val cy = height / 2f + shakeY
-        val radius = unit * RING_RADIUS
-        comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
-        comets.draw(canvas, particleColor, unit)
-
-        val pulsed = radius * (1f + frame.kick * LOGO_PULSE * settings.sensitivity)
-        if (settings.showHills) {
-            hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
-            hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
-        }
-        if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
-        drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
-
+        shakeX = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
+        shakeY = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
+        zoom = 1f + frame.bass * 0.03f * settings.sensitivity + frame.kick * 0.02f
+        update(frame, dt, settings)
+        scene(canvas, split = true)
+        glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), drawSlice)
         if (flash > 0.01f) {
             flashPaint.color = Color.argb((flash * 255).toInt().coerceIn(0, 255), 255, 255, 255)
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), flashPaint)
         }
     }
+
+    // State advances once per frame
+    private fun update(frame: AudioFrame, dt: Float, settings: VisualSettings) {
+        particles.update(settings.particleCount, dt, frame.energy, frame.kick)
+        comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
+        if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
+        ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt)
+        pendulum.update(frame.beat, frame.beatStrength, settings.pendulumAmount, dt)
+        glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)
+    }
+
+    // Pure drawing, safe to repeat
+    private fun scene(canvas: Canvas, split: Boolean) {
+        val particleColor = settings.particleColor.toInt()
+        background.draw(canvas, width, height, backgroundImage, settings, zoom, shakeX * 0.5f, shakeY * 0.5f)
+        particles.draw(canvas, sprite, width, height, particleColor, kick)
+        comets.draw(canvas, particleColor, unit)
+        val reach = hypot(width.toFloat(), height.toFloat()) / 2
+        ripples.draw(canvas, centerX(), centerY(), unit * RING_RADIUS, reach, settings.ringColor.toInt(), settings.rippleAmount)
+        canvas.save()
+        canvas.rotate(pendulum.angle, centerX(), centerY() - unit * RING_RADIUS * PIVOT_DISTANCE)
+        if (split) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawCenter)
+        centerGroup(canvas)
+        canvas.restore()
+    }
+
+    private fun centerGroup(canvas: Canvas) {
+        val cx = centerX()
+        val cy = centerY()
+        val radius = unit * RING_RADIUS
+        val ringColor = settings.ringColor.toInt()
+        val pulsed = radius * (1f + kick * LOGO_PULSE * settings.sensitivity)
+        if (settings.showHills) hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
+        if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
+        drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
+    }
+
+    private fun centerX() = width / 2f + shakeX
+
+    private fun centerY() = height / 2f + shakeY
 
     private fun react(frame: AudioFrame, dt: Float, settings: VisualSettings) {
         if (frame.beat && settings.shake) shake = max(shake, frame.beatStrength)
@@ -163,5 +205,8 @@ class PulseRingTemplate(typeface: Typeface) {
         const val FLASH_AMOUNT = 0.07f
         const val COMET_COUNT = 6
         const val LOGO_PULSE = 0.05f
+
+        // Pivot above logo, in radii
+        const val PIVOT_DISTANCE = 3f
     }
 }

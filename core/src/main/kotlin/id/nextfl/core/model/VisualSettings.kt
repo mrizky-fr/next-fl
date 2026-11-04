@@ -26,6 +26,9 @@ data class VisualSettings(
     val syncMs: Int = 100,
     val showLogo: Boolean = true,
     val showHills: Boolean = true,
+    val rippleAmount: Float = 0.5f,
+    val pendulumAmount: Float = 0.3f,
+    val glitchAmount: Float = 0.25f,
 ) {
     companion object {
         const val WHITE = 0xFFFFFFFF

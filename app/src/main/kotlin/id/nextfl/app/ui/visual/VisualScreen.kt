@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import id.nextfl.app.ui.theme.Fonts
 import androidx.compose.ui.unit.dp
 import id.nextfl.core.model.AspectRatio
+import id.nextfl.core.model.FxRanges
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.roundToInt
 import id.nextfl.app.data.VisualImage
@@ -161,6 +162,11 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ToggleRow("Gunung beat", settings.showHills, { on -> update { it.copy(showHills = on) } })
             ToggleRow("Komet segitiga", settings.streaks, { on -> update { it.copy(streaks = on) } })
         }
+        PanelSection("Efek beat") {
+            ValueSlider("Riak", settings.rippleAmount, FxRanges.UNIT, { v -> update { it.copy(rippleAmount = v) } }, ::formatIntensity)
+            ValueSlider("Pendulum", settings.pendulumAmount, FxRanges.UNIT, { v -> update { it.copy(pendulumAmount = v) } }, ::formatIntensity)
+            ValueSlider("Glitch", settings.glitchAmount, FxRanges.UNIT, { v -> update { it.copy(glitchAmount = v) } }, ::formatIntensity)
+        }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
@@ -195,3 +201,6 @@ private fun aspectIcon(aspect: AspectRatio) = when (aspect) {
     AspectRatio.PORTRAIT -> Icons.Rounded.CropPortrait
     AspectRatio.SQUARE -> Icons.Rounded.CropSquare
 }
+
+// Zero reads as off
+private fun formatIntensity(value: Float): String = if (value < 0.01f) "Mati" else "${(value * 100).roundToInt()}%"
