@@ -268,9 +268,12 @@ class CometField(private val random: Random = Random(11)) {
     }
 }
 
-/** Mirrored beat hills, upper corners. */
+/** Elastic water-like hills, mirrored. */
 class BeatHills {
+    private var target = 0f
     private var level = 0f
+    private var velocity = 0f
+    private var phase = 0f
     private var peak = 0f
     private var floor = 0f
     private var anchor = 0f
@@ -285,20 +288,40 @@ class BeatHills {
             anchor = max(bass, floor + MIN_SPAN)
         }
         val sustain = ((bass - floor) / max(MIN_SPAN, anchor - floor)).coerceIn(0f, 1f)
-        val target = peak * sustain.pow(SUSTAIN_CURVE)
+        target = peak * sustain.pow(SUSTAIN_CURVE)
         if (sustain <= 0f) peak = 0f
-        level = if (target >= level) target else level + (target - level) * (1f - exp(-dt / RELEASE_SECONDS))
+        spring(dt)
+        phase += dt * WAVE_SPEED
+    }
+
+    // Damped spring, sub-stepped for stability
+    private fun spring(dt: Float) {
+        var remaining = dt
+        while (remaining > 0f) {
+            val step = min(remaining, MAX_STEP_SECONDS)
+            val rising = target > level
+            val stiffness = if (rising) ATTACK_STIFFNESS else RELEASE_STIFFNESS
+            val damping = if (rising) ATTACK_DAMPING else RELEASE_DAMPING
+            velocity += ((target - level) * stiffness - velocity * damping) * step
+            level += velocity * step
+            if (level < 0f) {
+                level = 0f
+                velocity = max(velocity, 0f)
+            }
+            remaining -= step
+        }
     }
 
     // Filled hills between circle and curve
     fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float) {
         if (level < MIN_LEVEL) return
         val lift = level * AMPLITUDE * sensitivity
+        val halfWidth = HILL_HALF_WIDTH * (WIDTH_BASE + WIDTH_GROWTH * min(level, 1.2f))
         path.reset()
         path.fillType = Path.FillType.EVEN_ODD
         for (j in 0 until POINTS) {
             val angle = -PI.toFloat() / 2 + j * 2 * PI.toFloat() / POINTS
-            val hill = max(bell(angle, UPPER_LEFT), bell(angle, UPPER_RIGHT))
+            val hill = max(wave(angle, UPPER_LEFT, halfWidth), wave(angle, UPPER_RIGHT, halfWidth))
             val r = radius * (1f + hill * lift)
             val x = cx + cos(angle) * r
             val y = cy + sin(angle) * r
@@ -310,14 +333,16 @@ class BeatHills {
         canvas.drawPath(path, fill)
     }
 
-    // EQ-style bell, zero at edges
-    private fun bell(angle: Float, center: Float): Float {
+    // Bell with ripples running outward
+    private fun wave(angle: Float, center: Float, halfWidth: Float): Float {
         var delta = angle - center
         while (delta > PI) delta -= 2 * PI.toFloat()
         while (delta < -PI) delta += 2 * PI.toFloat()
-        if (abs(delta) >= HILL_HALF_WIDTH) return 0f
-        val shape = 0.5f + 0.5f * cos(delta / HILL_HALF_WIDTH * PI.toFloat())
-        return shape.pow(HILL_POWER)
+        val distance = abs(delta)
+        if (distance >= halfWidth) return 0f
+        val shape = (0.5f + 0.5f * cos(distance / halfWidth * PI.toFloat())).pow(HILL_POWER)
+        val ripple = 1f + RIPPLE_DEPTH * sin(distance * WAVE_NUMBER - phase)
+        return shape * ripple
     }
 
     private companion object {
@@ -325,7 +350,16 @@ class BeatHills {
         const val AMPLITUDE = 0.42f
         const val HILL_HALF_WIDTH = 0.75f
         const val HILL_POWER = 1.4f
-        const val RELEASE_SECONDS = 0.06f
+        const val WIDTH_BASE = 0.85f
+        const val WIDTH_GROWTH = 0.25f
+        const val ATTACK_STIFFNESS = 1600f
+        const val ATTACK_DAMPING = 36f
+        const val RELEASE_STIFFNESS = 480f
+        const val RELEASE_DAMPING = 13f
+        const val MAX_STEP_SECONDS = 1f / 240f
+        const val RIPPLE_DEPTH = 0.18f
+        const val WAVE_NUMBER = 12f
+        const val WAVE_SPEED = 9f
         const val FLOOR_SECONDS = 1.2f
         const val MIN_SPAN = 0.04f
         const val SUSTAIN_CURVE = 0.7f
