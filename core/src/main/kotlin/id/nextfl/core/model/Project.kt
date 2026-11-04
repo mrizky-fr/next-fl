@@ -62,7 +62,7 @@ data class LevellerSettings(
     val pan: Float = 0f,
 ) {
     companion object {
-        // Centered: 0 dB equals track volume
+        // Boost only: 0 dB = track volume
         const val MAX_GAIN_DB = 24f
     }
 }

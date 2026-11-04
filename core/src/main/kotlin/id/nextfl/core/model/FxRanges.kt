@@ -14,5 +14,5 @@ object FxRanges {
     val REVERB_LOW_CUT = 20f..1000f
     val REVERB_TRIM_DB = -24f..6f
     val GRAPHIC_GAIN = -GraphicEqSettings.MAX_GAIN_DB..GraphicEqSettings.MAX_GAIN_DB
-    val LEVELLER_GAIN = -LevellerSettings.MAX_GAIN_DB..LevellerSettings.MAX_GAIN_DB
+    val LEVELLER_GAIN = 0f..LevellerSettings.MAX_GAIN_DB
 }

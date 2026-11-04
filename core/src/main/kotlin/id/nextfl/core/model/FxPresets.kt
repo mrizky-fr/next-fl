@@ -39,8 +39,9 @@ object FxPresets {
 
     val leveller = listOf(
         FxPreset("Default", LevellerSettings(enabled = true)),
-        FxPreset("-6 dB", LevellerSettings(enabled = true, gainDb = -6f)),
+        FxPreset("+3 dB", LevellerSettings(enabled = true, gainDb = 3f)),
         FxPreset("+6 dB", LevellerSettings(enabled = true, gainDb = 6f)),
+        FxPreset("+12 dB", LevellerSettings(enabled = true, gainDb = 12f)),
     )
 
     /** Preset matching current values, ignoring on/off. */
