@@ -34,8 +34,9 @@ private class DelayLine(capacity: Int) {
     fun read(delay: Float): Float {
         var position = writeIndex - delay
         if (position < 0) position += buffer.size
-        val index = position.toInt()
-        val fraction = position - index
+        // Float rounding can reach size
+        val index = position.toInt() % buffer.size
+        val fraction = (position - position.toInt()).coerceIn(0f, 1f)
         val next = if (index + 1 == buffer.size) 0 else index + 1
         return buffer[index] + (buffer[next] - buffer[index]) * fraction
     }

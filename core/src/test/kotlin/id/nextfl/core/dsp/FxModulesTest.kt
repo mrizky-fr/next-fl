@@ -38,6 +38,24 @@ class StereoizerTest {
         assertTrue(side > 1.0, "side energy $side")
     }
 
+    // Regression: tiny gliding delay overflowed buffer
+    @Test
+    fun delayGlidingToZeroNeverOverflows() {
+        val stereoizer = Stereoizer(rate)
+        val block = 1024
+        val left = FloatArray(block)
+        val right = FloatArray(block)
+        stereoizer.configure(StereoizerSettings(enabled = true, lrDelay = 0.5f))
+        repeat(20) { stereoizer.process(left, right, block) }
+        stereoizer.configure(StereoizerSettings(enabled = true, lrDelay = 0f))
+        repeat(rate * 4 / block) {
+            noise(block, it).copyInto(left)
+            noise(block, it + 1).copyInto(right)
+            stereoizer.process(left, right, block)
+        }
+        assertTrue(left.all { it.isFinite() } && right.all { it.isFinite() })
+    }
+
     @Test
     fun disabledIsUntouched() {
         val left = noise(1000, 4)

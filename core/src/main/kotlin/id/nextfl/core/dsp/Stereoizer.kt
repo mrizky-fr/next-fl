@@ -84,12 +84,13 @@ class Stereoizer(private val sampleRate: Int) {
         return sideOut
     }
 
-    // Linear interpolated read behind write
+    // Wraps index; float rounding can hit capacity
     private fun read(line: FloatArray, delay: Float): Float {
+        if (delay <= 0f) return line[index]
         var position = index - delay
         if (position < 0) position += capacity
-        val whole = position.toInt()
-        val fraction = position - whole
+        val whole = position.toInt() % capacity
+        val fraction = (position - position.toInt()).coerceIn(0f, 1f)
         val next = if (whole + 1 == capacity) 0 else whole + 1
         return line[whole] + (line[next] - line[whole]) * fraction
     }
@@ -100,11 +101,13 @@ class Stereoizer(private val sampleRate: Int) {
         synth += (synthTarget - synth) * glide
         comb += (combTarget - comb) * glide
         focus += (focusTarget - focus) * glide
-        delayL += (delayLTarget - delayL) * glide
-        delayR += (delayRTarget - delayR) * glide
+        delayL = settle(delayL + (delayLTarget - delayL) * glide, delayLTarget)
+        delayR = settle(delayR + (delayRTarget - delayR) * glide, delayRTarget)
         gainL += (gainLTarget - gainL) * glide
         gainR += (gainRTarget - gainR) * glide
     }
+
+    private fun settle(value: Float, target: Float) = if (kotlin.math.abs(target - value) < DELAY_SNAP_SAMPLES) target else value
 
     private fun snap() {
         mix = mixTarget
@@ -129,5 +132,6 @@ class Stereoizer(private val sampleRate: Int) {
         private const val MAX_LINE_SECONDS = 0.025
         private const val GLIDE_SECONDS = 0.02
         private const val SILENT = 1e-4f
+        private const val DELAY_SNAP_SAMPLES = 1e-3f
     }
 }
