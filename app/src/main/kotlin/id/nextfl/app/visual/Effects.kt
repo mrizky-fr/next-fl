@@ -92,6 +92,12 @@ class CometField(private val random: Random = Random(11)) {
         strokeJoin = Paint.Join.ROUND
         color = Color.WHITE
     }
+    private val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        color = Color.BLACK
+    }
+    private val headFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     private val puff = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
     private var boost = 0f
@@ -118,12 +124,12 @@ class CometField(private val random: Random = Random(11)) {
         }
     }
 
+    // All smoke first, heads on top
     fun draw(canvas: Canvas, color: Int, unit: Float) {
         stroke.strokeWidth = unit * HEAD_STROKE
-        for (comet in comets) {
-            drawPuffs(canvas, comet, color, unit)
-            drawHead(canvas, comet)
-        }
+        border.strokeWidth = unit * (HEAD_STROKE + HEAD_BORDER * 2)
+        for (comet in comets) drawPuffs(canvas, comet, color, unit)
+        for (comet in comets) drawHead(canvas, comet)
     }
 
     private fun move(comet: Comet, speed: Float, dt: Float, unit: Float) {
@@ -208,7 +214,8 @@ class CometField(private val random: Random = Random(11)) {
             if (k == 0) path.moveTo(px, py) else path.lineTo(px, py)
         }
         path.close()
-        stroke.alpha = HEAD_ALPHA
+        canvas.drawPath(path, headFill)
+        canvas.drawPath(path, border)
         canvas.drawPath(path, stroke)
     }
 
@@ -248,7 +255,7 @@ class CometField(private val random: Random = Random(11)) {
         const val PUFF_MIN_SCALE = 0.75f
         const val PUFF_SCALE_SPREAD = 0.5f
         const val CRUISE_SPEED = 0.05f
-        const val BURST_SPEED = 0.75f
+        const val BURST_SPEED = 1.5f
         const val ENERGY_SPEED = 0.08f
         const val BOOST_DECAY = 3.2f
         const val FALL_HEADING = 2.55f
@@ -262,7 +269,7 @@ class CometField(private val random: Random = Random(11)) {
         const val SMOKE_RISE = 0.004f
         const val HEAD_STROKE = 0.0035f
         const val HEAD_PULSE = 0.25f
-        const val HEAD_ALPHA = 235
+        const val HEAD_BORDER = 0.004f
         const val THIRD_TURN = 2.0943952f
         const val TWO_PI = 6.2831855f
     }

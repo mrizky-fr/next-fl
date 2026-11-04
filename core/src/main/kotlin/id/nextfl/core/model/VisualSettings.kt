@@ -13,8 +13,8 @@ enum class AspectRatio(val width: Int, val height: Int, val label: String) {
 data class VisualSettings(
     val templateId: String = "pulse-ring",
     val aspect: AspectRatio = AspectRatio.WIDE,
-    val ringColor: Long = 0xFFFFFFFF,
-    val particleColor: Long = 0xFFF3A6FF,
+    val ringColor: Long = WHITE,
+    val particleColor: Long = WHITE,
     val title: String = "",
     val sensitivity: Float = 1f,
     val backgroundDim: Float = 0.55f,
@@ -24,8 +24,15 @@ data class VisualSettings(
     val streaks: Boolean = true,
     val shake: Boolean = true,
     val syncMs: Int = 100,
+    val showLogo: Boolean = true,
+    val showHills: Boolean = true,
 ) {
     companion object {
+        const val WHITE = 0xFFFFFFFF
+
+        // Old default, now white
+        const val LEGACY_PARTICLE = 0xFFF3A6FF
+
         // Limited by audio render-ahead
         const val MAX_SYNC_MS = 250
     }

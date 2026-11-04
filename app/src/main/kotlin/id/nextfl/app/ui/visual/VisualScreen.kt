@@ -73,7 +73,8 @@ import id.nextfl.app.ui.theme.TextStyles
 import id.nextfl.app.visual.PulseRingTemplate
 
 private val RING_COLORS = listOf(0xFFFFFFFF, 0xFF6AAEEA, 0xFF3C8DDB, 0xFF0465C4, 0xFFFFD166)
-private val PARTICLE_COLORS = listOf(0xFFF3A6FF, 0xFFFFFFFF, 0xFF6AAEEA, 0xFF0465C4, 0xFFFF5C8A)
+// Pink differs from migrated legacy default
+private val PARTICLE_COLORS = listOf(0xFFFFFFFF, 0xFFFF8AD8, 0xFF6AAEEA, 0xFF0465C4, 0xFFFF5C8A)
 private const val MAX_FRAME_SECONDS = 0.1f
 
 @Composable
@@ -155,11 +156,15 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             Text("Partikel & kilatan", style = TextStyles.Caption)
             ColorSwatches(PARTICLE_COLORS, settings.particleColor) { color -> update { it.copy(particleColor = color) } }
         }
+        PanelSection("Elemen") {
+            ToggleRow("Logo", settings.showLogo, { on -> update { it.copy(showLogo = on) } })
+            ToggleRow("Gunung beat", settings.showHills, { on -> update { it.copy(showHills = on) } })
+            ToggleRow("Komet segitiga", settings.streaks, { on -> update { it.copy(streaks = on) } })
+        }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
-            ToggleRow("Komet segitiga", settings.streaks, { on -> update { it.copy(streaks = on) } })
             ToggleRow("Goyang saat beat", settings.shake, { on -> update { it.copy(shake = on) } })
         }
         PanelSection("Background") {

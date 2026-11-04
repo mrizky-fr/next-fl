@@ -46,7 +46,6 @@ class LogoBadge(typeface: Typeface) {
         if (logo == null) drawPlaceholder(canvas, cx, cy, radius) else drawLogo(canvas, logo, cx, cy, radius)
         canvas.restore()
         stroke.color = ringColor
-        stroke.alpha = 235
         stroke.strokeWidth = radius * 0.03f
         canvas.drawCircle(cx, cy, radius, stroke)
     }
@@ -130,9 +129,11 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.draw(canvas, particleColor, unit)
 
         val pulsed = radius * (1f + frame.kick * LOGO_PULSE * settings.sensitivity)
-        hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
-        hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
-        logo.draw(canvas, cx, cy, pulsed, ringColor)
+        if (settings.showHills) {
+            hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
+            hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
+        }
+        if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
         drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
 
         if (flash > 0.01f) {
