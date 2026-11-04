@@ -54,6 +54,7 @@ data class GraphicEqSettings(
     }
 }
 
+/** Gain relative to track volume. */
 @Serializable
 data class LevellerSettings(
     val enabled: Boolean = false,
@@ -61,7 +62,8 @@ data class LevellerSettings(
     val pan: Float = 0f,
 ) {
     companion object {
-        const val MAX_GAIN_DB = 12f
+        // Centered: 0 dB equals track volume
+        const val MAX_GAIN_DB = 24f
     }
 }
 

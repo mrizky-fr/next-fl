@@ -261,7 +261,7 @@ private fun formatAmount(value: Float): String = "${(value * 100).roundToInt()}"
 
 private fun formatPercent(value: Float): String = "${(value * 100).roundToInt()}%"
 
-private fun formatLevel(db: Float): String = if (db <= FxRanges.LEVELLER_GAIN.start + 0.05f) "-∞" else "%+.1f dB".format(db)
+private fun formatLevel(db: Float): String = "%+.1f dB".format(db)
 
 // Positive delays right channel
 private fun formatHaas(value: Float): String {

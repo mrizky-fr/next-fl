@@ -81,7 +81,8 @@ class ExportFxTest {
         val (quiet, _) = export { doc, _ -> doc.copy(masterDb = -12f) }
         val quietRatio = rms(quiet, 0.2, 0.8) / rms(plain.first, 0.2, 0.8)
         assertTrue(quietRatio in 0.2..0.3, "master -12 dB ratio $quietRatio")
-        val (muted, _) = export { doc, _ -> doc.copy(masterFx = FxChain(leveller = LevellerSettings(enabled = true, gainDb = -60f))) }
-        assertTrue(rms(muted, 0.2, 0.8) < 1e-4, "master leveller -inf should silence export")
+        val (boosted, _) = export { doc, _ -> doc.copy(masterDb = -12f, masterFx = FxChain(leveller = LevellerSettings(enabled = true, gainDb = 6f))) }
+        val boostRatio = rms(boosted, 0.2, 0.8) / rms(quiet, 0.2, 0.8)
+        assertTrue(boostRatio in 1.8..2.2, "master leveller +6 dB on top of fader, ratio $boostRatio")
     }
 }
