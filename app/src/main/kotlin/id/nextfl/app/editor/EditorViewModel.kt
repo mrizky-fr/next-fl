@@ -92,6 +92,8 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     fun seek(seconds: Double) = app.playback.seek(seconds)
     fun position(): Double = app.playback.positionSeconds()
 
+    fun displayPosition(frameNanos: Long): Double = app.playback.displayPosition(frameNanos)
+
     // View state
     fun updateUi(transform: (UiState) -> UiState) = mutableUi.update(transform)
     fun dismissToast(id: Long) = app.messages.dismiss(id)

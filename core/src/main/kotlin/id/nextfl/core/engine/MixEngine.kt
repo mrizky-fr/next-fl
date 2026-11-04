@@ -37,6 +37,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     var masterPeak = 0f
         private set
 
+    /** Live playback wraps at song end. */
+    @Volatile
+    var looping = false
+
     val currentGraph: RenderGraph get() = graph
 
     fun setGraph(next: RenderGraph) {
@@ -73,11 +77,25 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     fun masterPeakAt(output: Long): Float = masterHistory.at(output)
 
     fun renderInterleaved(out: FloatArray, frames: Int) {
-        renderStereo(masterL, masterR, frames, copy = false)
-        for (i in 0 until frames) {
-            out[2 * i] = masterL[i]
-            out[2 * i + 1] = masterR[i]
+        var done = 0
+        while (done < frames) {
+            val count = nextChunk(frames - done)
+            renderStereo(masterL, masterR, count, copy = false)
+            for (i in 0 until count) {
+                out[2 * (done + i)] = masterL[i]
+                out[2 * (done + i) + 1] = masterR[i]
+            }
+            done += count
         }
+    }
+
+    // Splits block exactly at loop point
+    private fun nextChunk(remaining: Int): Int {
+        applySeek()
+        val end = graph.endFrame
+        if (!looping || end <= 0) return remaining
+        if (songFrame >= end) jumpTo(0)
+        return min(remaining.toLong(), end - songFrame).toInt()
     }
 
     fun renderStereo(left: FloatArray, right: FloatArray, frames: Int, copy: Boolean = true) {
@@ -103,8 +121,12 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         val seek = pendingSeek
         if (seek < 0) return
         pendingSeek = -1
-        songFrame = seek
-        segments = (segments + longArrayOf(outputFrame, seek)).takeLast(MAX_SEGMENTS * 2).toLongArray()
+        jumpTo(seek)
+    }
+
+    private fun jumpTo(frame: Long) {
+        songFrame = frame
+        segments = (segments + longArrayOf(outputFrame, frame)).takeLast(MAX_SEGMENTS * 2).toLongArray()
     }
 
     private fun syncProcessors(current: RenderGraph) {

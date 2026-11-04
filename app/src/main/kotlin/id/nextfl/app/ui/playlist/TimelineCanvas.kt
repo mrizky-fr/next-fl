@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
@@ -20,7 +22,6 @@ import id.nextfl.app.ui.theme.Fonts
 import id.nextfl.core.state.EditorState
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.editor.UiState
-import id.nextfl.app.ui.components.rememberFrameTick
 
 @Composable
 fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing: Boolean, geometry: TimelineGeometry, modifier: Modifier = Modifier) {
@@ -29,14 +30,20 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
     val renderer = remember(geometry) { TimelineRenderer(geometry, density, Fonts.semibold(context)) }
     val scope = rememberCoroutineScope()
     val gestures = remember(geometry) { TimelineGestures(vm, geometry, scope) }
-    val tick by rememberFrameTick(active = playing)
+    val livePosition = remember { mutableDoubleStateOf(0.0) }
+    val follow by rememberUpdatedState(ui.follow)
     val libraryVersion by vm.libraryVersion.collectAsState()
     val pending by vm.pendingStretches.collectAsState()
     val viewport = vm.viewport
 
     LaunchedEffect(density) { viewport.ensureZoom(density) }
-    LaunchedEffect(playing, ui.follow) {
-        while (playing && ui.follow) withFrameNanos { gestures.followPlayhead(vm.position()) }
+    // One position per frame, follow and draw
+    LaunchedEffect(playing) {
+        while (playing) withFrameNanos { now ->
+            val position = vm.displayPosition(now)
+            if (follow) gestures.followPlayhead(position)
+            livePosition.doubleValue = position
+        }
     }
 
     Canvas(
@@ -46,7 +53,7 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
             .pointerInput(gestures) { with(gestures) { handleTouches() } }
             .pointerInput(gestures) { with(gestures) { handleWheel() } },
     ) {
-        gestures.bind(state, ui.snap, size.width, size.height)
+        gestures.bind(state, ui.snap, size.width, size.height, lockPan = playing && ui.follow)
         val scene = TimelineScene(
             width = size.width,
             height = size.height,
@@ -57,7 +64,7 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
             assets = state.assets,
             selectedClipId = state.selectedClipId,
             selectedTrackId = state.selectedTrackId,
-            playhead = gestures.scrubPosition ?: tick.let { vm.position() },
+            playhead = gestures.scrubPosition ?: if (playing) livePosition.doubleValue else vm.position(),
             playheadGrabbed = gestures.playheadGrabbed,
             snapGuide = gestures.snapGuide,
             peaks = { id -> libraryVersion.let { vm.library.peaks(id) } },

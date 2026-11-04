@@ -14,8 +14,6 @@ import id.nextfl.core.engine.RenderGraphBuilder
 import id.nextfl.core.state.ProjectStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +22,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToLong
 
 /** Transport, graph and focus. */
@@ -45,11 +44,11 @@ class PlaybackController(
     }
     private var session: PlaybackSession? = null
     private var pausedFrame = 0L
-    private var endWatch: Job? = null
     private val mutablePlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = mutablePlaying.asStateFlow()
 
     init {
+        engine.looping = true
         observeProject()
     }
 
@@ -78,7 +77,6 @@ class PlaybackController(
         engine.resetOutputClock(pausedFrame)
         session = PlaybackSession(engine).also { it.start() }
         mutablePlaying.value = true
-        endWatch = scope.launch { watchEnd() }
     }
 
     fun pause() {
@@ -86,7 +84,6 @@ class PlaybackController(
         pausedFrame = positionFrames()
         current.finish()
         session = null
-        endWatch?.cancel()
         runCatching { context.unregisterReceiver(noisyReceiver) }
         audioManager.abandonAudioFocusRequest(focusRequest)
         mutablePlaying.value = false
@@ -117,19 +114,26 @@ class PlaybackController(
 
     fun audibleMasterPeak(): Float = if (isPlaying.value) engine.masterPeakAt(audibleOutputFrame()) else 0f
 
-    private suspend fun watchEnd() {
-        while (true) {
-            delay(END_WATCH_MS)
-            val graph = engine.currentGraph
-            if (graph.endFrame > 0 && positionFrames() >= graph.endFrame + graph.tailFrames) {
-                stop()
-                return
-            }
-        }
+    private var shownSeconds = 0.0
+    private var shownAtNanos = 0L
+
+    /** Jitter-free position, one per frame. */
+    fun displayPosition(frameNanos: Long): Double {
+        val raw = positionSeconds()
+        val elapsed = (frameNanos - shownAtNanos) / NANOS_PER_SECOND
+        val predicted = shownSeconds + elapsed
+        shownAtNanos = frameNanos
+        // Snap on seek, loop, or resume
+        val snap = session == null || elapsed !in 0.0..MAX_FRAME_GAP_SECONDS || abs(raw - predicted) > SNAP_SECONDS
+        shownSeconds = if (snap) raw else predicted + (raw - predicted) * CORRECTION
+        return shownSeconds
     }
 
     private companion object {
-        const val END_WATCH_MS = 150L
+        const val NANOS_PER_SECOND = 1e9
+        const val MAX_FRAME_GAP_SECONDS = 0.25
+        const val SNAP_SECONDS = 0.1
+        const val CORRECTION = 0.1
         const val STRETCH_DEBOUNCE_MS = 300L
     }
 }

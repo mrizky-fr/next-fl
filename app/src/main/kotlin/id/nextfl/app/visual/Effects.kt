@@ -271,13 +271,23 @@ class CometField(private val random: Random = Random(11)) {
 /** Mirrored beat hills, upper corners. */
 class BeatHills {
     private var level = 0f
+    private var peak = 0f
+    private var floor = 0f
+    private var anchor = 0f
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
 
-    // Instant rise, fast fall
-    fun update(beat: Boolean, strength: Float, dt: Float) {
-        level *= exp(-dt / RELEASE_SECONDS)
-        if (beat) level = max(level, strength.pow(RESPONSE_CURVE))
+    // Rises on beat, holds while bass lasts
+    fun update(beat: Boolean, strength: Float, bass: Float, dt: Float) {
+        floor += (bass - floor) * (1f - exp(-dt / FLOOR_SECONDS))
+        if (beat) {
+            peak = strength.pow(RESPONSE_CURVE)
+            anchor = max(bass, floor + MIN_SPAN)
+        }
+        val sustain = ((bass - floor) / max(MIN_SPAN, anchor - floor)).coerceIn(0f, 1f)
+        val target = peak * sustain.pow(SUSTAIN_CURVE)
+        if (sustain <= 0f) peak = 0f
+        level = if (target >= level) target else level + (target - level) * (1f - exp(-dt / RELEASE_SECONDS))
     }
 
     // Filled hills between circle and curve
@@ -315,7 +325,10 @@ class BeatHills {
         const val AMPLITUDE = 0.42f
         const val HILL_HALF_WIDTH = 0.75f
         const val HILL_POWER = 1.4f
-        const val RELEASE_SECONDS = 0.07f
+        const val RELEASE_SECONDS = 0.06f
+        const val FLOOR_SECONDS = 1.2f
+        const val MIN_SPAN = 0.04f
+        const val SUSTAIN_CURVE = 0.7f
         const val RESPONSE_CURVE = 0.6f
         const val MIN_LEVEL = 0.005f
         val UPPER_RIGHT = (-PI / 4).toFloat()

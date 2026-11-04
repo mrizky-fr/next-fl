@@ -54,12 +54,16 @@ class TimelineGestures(
     private var snap = SnapMode.BEAT
     private var width = 0f
     private var height = 0f
+
+    // Follow owns horizontal scroll
+    private var lockPan = false
     private var fling: Job? = null
     private var interacting = false
     private val viewport get() = vm.viewport
 
-    fun bind(state: EditorState, snap: SnapMode, width: Float, height: Float) {
+    fun bind(state: EditorState, snap: SnapMode, width: Float, height: Float, lockPan: Boolean) {
         this.state = state
+        this.lockPan = lockPan
         this.snap = snap
         this.width = width
         this.height = height
@@ -109,7 +113,7 @@ class TimelineGestures(
                 if (event.keyboardModifiers.isCtrlPressed) {
                     viewport.zoomAround(change.position.x, exp(-delta.y * WHEEL_ZOOM), density)
                 } else {
-                    scrollBy(-(delta.y + delta.x) * WHEEL_PIXELS, 0f)
+                    if (!lockPan) scrollBy(-(delta.y + delta.x) * WHEEL_PIXELS, 0f)
                 }
                 change.consume()
             }
@@ -118,7 +122,7 @@ class TimelineGestures(
 
     // Playhead parks after 5 bars, grid scrolls
     fun followPlayhead(position: Double) {
-        if (interacting || width <= 0f) return
+        if ((interacting && !lockPan) || width <= 0f) return
         val pps = viewport.pixelsPerSecond
         val barsWidth = Beats.toSeconds(FOLLOW_BARS * Beats.PER_BAR.toDouble(), state.doc.bpm) * pps
         val anchor = minOf(barsWidth.toFloat(), width * MAX_ANCHOR_SHARE)
@@ -168,7 +172,7 @@ class TimelineGestures(
     private fun drag(mode: DragMode, change: PointerInputChange) {
         val time = geometry.xToTime(change.position.x, viewport.scrollSeconds, viewport.pixelsPerSecond)
         when (mode) {
-            DragMode.Pan -> (change.position - change.previousPosition).let { scrollBy(it.x, it.y) }
+            DragMode.Pan -> (change.position - change.previousPosition).let { scrollBy(if (lockPan) 0f else it.x, it.y) }
             DragMode.Scrub -> scrubTo(time)
             is DragMode.Playhead -> scrubTo(time - mode.grabOffset)
             is DragMode.Move -> moveClip(mode, time, change.position.y)
@@ -224,7 +228,7 @@ class TimelineGestures(
 
     private fun startFling(velocity: Offset) {
         fling = scope.launch {
-            var vx = velocity.x
+            var vx = if (lockPan) 0f else velocity.x
             var vy = velocity.y
             var last = withFrameNanos { it }
             while (abs(vx) > MIN_FLING || abs(vy) > MIN_FLING) {

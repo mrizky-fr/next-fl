@@ -46,6 +46,19 @@ class EngineTest {
     }
 
     @Test
+    fun loopingRestartsAtSongEnd() {
+        val engine = MixEngine(rate, 1024)
+        engine.looping = true
+        engine.setGraph(graph(startBeat = 0.0))
+        engine.resetOutputClock(0)
+        val out = FloatArray(2048)
+        // Clip lasts 2 s; render 2.5 s
+        repeat(rate * 5 / 2 / 1024) { engine.renderInterleaved(out, 1024) }
+        assertTrue(engine.songFrame in 1 until rate, "song frame ${engine.songFrame} should wrap past 2 s end")
+        assertTrue(out.maxOf { abs(it) } > 0.1f, "clip should play again after loop")
+    }
+
+    @Test
     fun mutedTrackIsSilent() {
         assertTrue(render(graph(mute = true)).all { it == 0f })
     }

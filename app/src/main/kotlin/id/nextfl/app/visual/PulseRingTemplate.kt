@@ -130,7 +130,7 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.draw(canvas, particleColor, unit)
 
         val pulsed = radius * (1f + frame.kick * LOGO_PULSE * settings.sensitivity)
-        hills.update(frame.beat, frame.beatStrength, dt)
+        hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
         hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
         logo.draw(canvas, cx, cy, pulsed, ringColor)
         drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
