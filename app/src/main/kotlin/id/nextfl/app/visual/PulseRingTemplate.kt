@@ -116,8 +116,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private var shakeY = 0f
     private var zoom = 1f
     private var kick = 0f
-    private val drawCenter: (Canvas) -> Unit = { centerGroup(it) }
-    private val drawSlice: (Canvas) -> Unit = { scene(it, split = false) }
+    private val drawScene: (Canvas) -> Unit = { scene(it) }
 
     fun setImages(background: Bitmap?, logoImage: Bitmap?) {
         backgroundImage = background
@@ -136,8 +135,8 @@ class PulseRingTemplate(typeface: Typeface) {
         shakeY = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
         zoom = 1f + frame.bass * 0.03f * settings.sensitivity + frame.kick * 0.02f
         update(frame, dt, settings)
-        scene(canvas, split = true)
-        glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), drawSlice)
+        if (glitch.isSplitting) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawScene) else scene(canvas)
+        glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), drawScene)
         if (flash > 0.01f) {
             flashPaint.color = Color.argb((flash * 255).toInt().coerceIn(0, 255), 255, 255, 255)
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), flashPaint)
@@ -149,24 +148,21 @@ class PulseRingTemplate(typeface: Typeface) {
         particles.update(settings.particleCount, dt, frame.energy, frame.kick)
         comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
-        ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt)
+        ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
         pendulum.update(frame.beat, frame.beatStrength, settings.pendulumAmount, dt)
         glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)
     }
 
-    // Pure drawing, safe to repeat
-    private fun scene(canvas: Canvas, split: Boolean) {
+    // Pure drawing; ripple and swing hit background only
+    private fun scene(canvas: Canvas) {
         val particleColor = settings.particleColor.toInt()
-        background.draw(canvas, width, height, backgroundImage, settings, zoom, shakeX * 0.5f, shakeY * 0.5f)
+        val bgX = shakeX * 0.5f
+        val bgY = shakeY * 0.5f
+        background.draw(canvas, width, height, backgroundImage, settings, zoom, bgX, bgY, pendulum.angle, ripples)
+        ripples.drawCrests(canvas, width / 2f + bgX, height / 2f + bgY, settings.ringColor.toInt())
         particles.draw(canvas, sprite, width, height, particleColor, kick)
         comets.draw(canvas, particleColor, unit)
-        val reach = hypot(width.toFloat(), height.toFloat()) / 2
-        ripples.draw(canvas, centerX(), centerY(), unit * RING_RADIUS, reach, settings.ringColor.toInt(), settings.rippleAmount)
-        canvas.save()
-        canvas.rotate(pendulum.angle, centerX(), centerY() - unit * RING_RADIUS * PIVOT_DISTANCE)
-        if (split) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawCenter)
         centerGroup(canvas)
-        canvas.restore()
     }
 
     private fun centerGroup(canvas: Canvas) {
@@ -205,8 +201,5 @@ class PulseRingTemplate(typeface: Typeface) {
         const val FLASH_AMOUNT = 0.07f
         const val COMET_COUNT = 6
         const val LOGO_PULSE = 0.05f
-
-        // Pivot above logo, in radii
-        const val PIVOT_DISTANCE = 3f
     }
 }

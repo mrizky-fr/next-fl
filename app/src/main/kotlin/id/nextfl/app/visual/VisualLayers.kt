@@ -14,8 +14,13 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import id.nextfl.core.model.VisualSettings
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /** Sprite for additive glows. */
 class GlowSprite {
@@ -56,8 +61,20 @@ class BackgroundLayer {
     private var cached: Bitmap? = null
     private var cacheKey: List<Any?> = emptyList()
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val verts = FloatArray((MESH + 1) * (MESH + 1) * 2)
 
-    fun draw(canvas: Canvas, width: Int, height: Int, image: Bitmap?, settings: VisualSettings, zoom: Float, offsetX: Float, offsetY: Float) {
+    fun draw(
+        canvas: Canvas,
+        width: Int,
+        height: Int,
+        image: Bitmap?,
+        settings: VisualSettings,
+        zoom: Float,
+        offsetX: Float,
+        offsetY: Float,
+        angle: Float = 0f,
+        ripple: RippleField? = null,
+    ) {
         val key = listOf(System.identityHashCode(image), width, height, settings.backgroundDim, settings.backgroundBlur, settings.grayscale)
         if (key != cacheKey || cached == null) {
             cached?.recycle()
@@ -65,11 +82,47 @@ class BackgroundLayer {
             cacheKey = key
         }
         val bitmap = cached ?: return
+        if (angle != 0f || ripple?.isActive == true) {
+            drawMesh(canvas, bitmap, width, height, zoom, offsetX, offsetY, angle, ripple)
+            return
+        }
         canvas.save()
         canvas.translate(width / 2f + offsetX, height / 2f + offsetY)
         canvas.scale(zoom, zoom)
         canvas.drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, paint)
         canvas.restore()
+    }
+
+    // Swing and water waves via mesh
+    private fun drawMesh(canvas: Canvas, bitmap: Bitmap, width: Int, height: Int, zoom: Float, offsetX: Float, offsetY: Float, angle: Float, ripple: RippleField?) {
+        val radians = Math.toRadians(angle.toDouble())
+        val c = cos(radians).toFloat()
+        val s = sin(radians).toFloat()
+        val aspect = max(width, height).toFloat() / min(width, height)
+        // Grow just enough to hide corners
+        val scale = zoom * max(1f, (abs(c) + aspect * abs(s)) / OVERSCAN)
+        val halfW = bitmap.width / 2f
+        val halfH = bitmap.height / 2f
+        val cx = width / 2f + offsetX
+        val cy = height / 2f + offsetY
+        var k = 0
+        for (j in 0..MESH) {
+            for (i in 0..MESH) {
+                var px = i * bitmap.width / MESH.toFloat() - halfW
+                var py = j * bitmap.height / MESH.toFloat() - halfH
+                val distance = hypot(px, py)
+                if (ripple != null && distance > 0f) {
+                    val push = ripple.displacement(distance) / distance
+                    px += px * push
+                    py += py * push
+                }
+                px *= scale
+                py *= scale
+                verts[k++] = cx + px * c - py * s
+                verts[k++] = cy + px * s + py * c
+            }
+        }
+        canvas.drawBitmapMesh(bitmap, MESH, MESH, verts, 0, null, 0, paint)
     }
 
     private fun build(width: Int, height: Int, image: Bitmap?, settings: VisualSettings): Bitmap {
@@ -118,6 +171,7 @@ class BackgroundLayer {
 
     companion object {
         const val OVERSCAN = 1.08f
+        private const val MESH = 48
         private val DEFAULT_BACKGROUND = Color.parseColor("#131517")
         private const val BLUR_DIVISOR = 3f
     }

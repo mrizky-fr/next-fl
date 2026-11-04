@@ -1,22 +1,33 @@
 package id.nextfl.app.visual
 
+import android.graphics.BlendMode
 import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.random.Random
 
-/** Water rings spawned on beats. */
+/** Beat waves that ripple the background. */
 class RippleField {
     private class Ring(var age: Float, val strength: Float)
 
     private val rings = ArrayList<Ring>()
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private var amount = 0f
+    private var reach = 1f
+    private var unit = 1f
 
-    fun update(beat: Boolean, strength: Float, amount: Float, dt: Float) {
+    val isActive: Boolean get() = amount > 0f && rings.isNotEmpty()
+
+    fun update(beat: Boolean, strength: Float, amount: Float, dt: Float, reach: Float, unit: Float) {
+        this.amount = amount
+        this.reach = reach
+        this.unit = unit
         for (ring in rings) ring.age += dt
         rings.removeAll { it.age > LIFE_SECONDS }
         if (beat && amount > 0f) {
@@ -25,34 +36,54 @@ class RippleField {
         }
     }
 
-    // Main ring plus fading echoes
-    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, reach: Float, color: Int, amount: Float) {
-        if (amount <= 0f) return
-        stroke.color = color
+    /** Radial push for background mesh. */
+    fun displacement(distance: Float): Float {
+        if (!isActive) return 0f
+        val width = unit * WAVE_WIDTH
+        val wavelength = unit * WAVELENGTH
+        var sum = 0f
         for (ring in rings) {
-            val t = (ring.age / LIFE_SECONDS).coerceIn(0f, 1f)
-            val eased = 1f - (1f - t).pow(3)
-            val front = radius + (reach - radius) * eased
-            for (echo in 0 until ECHOES) {
-                val r = front - echo * radius * ECHO_SPACING
-                if (r <= radius) continue
-                val fade = (1f - t).pow(1.5f) * (1f - echo * ECHO_FADE)
-                stroke.alpha = (fade * amount * ring.strength * MAX_ALPHA).toInt().coerceIn(0, 255)
-                stroke.strokeWidth = radius * (RING_WIDTH * (1f - t) + MIN_WIDTH) * (0.5f + amount)
+            val offset = distance - front(ring)
+            if (abs(offset) > width * 3) continue
+            val envelope = exp(-(offset / width) * (offset / width))
+            sum += sin(offset / wavelength * TWO_PI) * envelope * fade(ring)
+        }
+        return sum * unit * MAX_DISPLACEMENT * amount
+    }
+
+    // Faint crests, background layer only
+    fun drawCrests(canvas: Canvas, cx: Float, cy: Float, color: Int) {
+        if (!isActive) return
+        stroke.color = color
+        stroke.strokeWidth = unit * CREST_WIDTH
+        for (ring in rings) {
+            val front = front(ring)
+            for (crest in 0 until CRESTS) {
+                val r = front - crest * unit * WAVELENGTH
+                if (r <= 0f) continue
+                stroke.alpha = (fade(ring) * amount * CREST_ALPHA * (1f - crest * CREST_FALLOFF)).toInt().coerceIn(0, 255)
                 canvas.drawCircle(cx, cy, r, stroke)
             }
         }
     }
 
+    private fun progress(ring: Ring) = (ring.age / LIFE_SECONDS).coerceIn(0f, 1f)
+
+    private fun front(ring: Ring) = reach * (1f - (1f - progress(ring)).pow(3))
+
+    private fun fade(ring: Ring) = (1f - progress(ring)).pow(1.5f) * ring.strength
+
     private companion object {
-        const val LIFE_SECONDS = 1.4f
+        const val LIFE_SECONDS = 1.6f
         const val MAX_RINGS = 6
-        const val ECHOES = 3
-        const val ECHO_SPACING = 0.18f
-        const val ECHO_FADE = 0.35f
-        const val MAX_ALPHA = 230f
-        const val RING_WIDTH = 0.05f
-        const val MIN_WIDTH = 0.006f
+        const val WAVE_WIDTH = 0.12f
+        const val WAVELENGTH = 0.08f
+        const val MAX_DISPLACEMENT = 0.02f
+        const val CRESTS = 2
+        const val CREST_ALPHA = 110f
+        const val CREST_WIDTH = 0.006f
+        const val CREST_FALLOFF = 0.5f
+        const val TWO_PI = 6.2831855f
     }
 }
 
@@ -81,8 +112,10 @@ class Pendulum {
         // Swings once per two beats
         const val STIFFNESS = 45f
         const val DAMPING = 2f
-        const val KICK = 90f
-        const val MAX_DEGREES = 25f
+        const val KICK = 60f
+
+        // Background only, keeps zoom small
+        const val MAX_DEGREES = 10f
         const val MAX_STEP_SECONDS = 1f / 240f
     }
 }
@@ -95,7 +128,7 @@ class Glitch(private val random: Random = Random(19)) {
     private var bands = 0
     private var reseed = 0f
     private val block = Paint()
-    private val red = splitPaint(1f, 0f, 0f)
+    private val red = splitPaint(1f, 0f, 0f).apply { blendMode = BlendMode.PLUS }
     private val cyan = splitPaint(0f, 1f, 1f)
     var level = 0f
         private set
@@ -115,12 +148,13 @@ class Glitch(private val random: Random = Random(19)) {
         }
     }
 
-    // Red and cyan ghosts behind
+    val isSplitting: Boolean get() = level > 0f
+
+    // Whole frame: cyan left, red right
     fun drawSplit(canvas: Canvas, unit: Float, amount: Float, scene: (Canvas) -> Unit) {
-        if (level <= 0f) return
         val shift = unit * MAX_SPLIT * level * amount
-        ghost(canvas, red, shift, scene)
-        ghost(canvas, cyan, -shift, scene)
+        layer(canvas, cyan, -shift, scene)
+        layer(canvas, red, shift, scene)
     }
 
     // Shifted slices plus error blocks
@@ -152,7 +186,7 @@ class Glitch(private val random: Random = Random(19)) {
         }
     }
 
-    private fun ghost(canvas: Canvas, paint: Paint, dx: Float, scene: (Canvas) -> Unit) {
+    private fun layer(canvas: Canvas, paint: Paint, dx: Float, scene: (Canvas) -> Unit) {
         canvas.saveLayer(null, paint)
         canvas.translate(dx, 0f)
         scene(canvas)
@@ -170,7 +204,6 @@ class Glitch(private val random: Random = Random(19)) {
         const val BLOCK_ALPHA = 140f
         const val BLOCK_WIDTH = 0.06f
         const val BLOCK_HEIGHT = 0.008f
-        const val SPLIT_ALPHA = 0.75f
 
         // Keeps one color channel only
         fun splitPaint(r: Float, g: Float, b: Float) = Paint().apply {
@@ -180,7 +213,7 @@ class Glitch(private val random: Random = Random(19)) {
                         r, 0f, 0f, 0f, 0f,
                         0f, g, 0f, 0f, 0f,
                         0f, 0f, b, 0f, 0f,
-                        0f, 0f, 0f, SPLIT_ALPHA, 0f,
+                        0f, 0f, 0f, 1f, 0f,
                     ),
                 ),
             )
