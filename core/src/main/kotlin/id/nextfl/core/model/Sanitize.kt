@@ -83,6 +83,7 @@ object Sanitize {
 
     fun visual(settings: VisualSettings): VisualSettings = settings.copy(
         title = settings.title.take(80),
+        socialUsername = settings.socialUsername.take(VisualSettings.MAX_USERNAME),
         sensitivity = settings.sensitivity.coerceIn(0.3f, 2.5f),
         syncMs = settings.syncMs.coerceIn(0, VisualSettings.MAX_SYNC_MS),
         rippleAmount = settings.rippleAmount.coerceIn(FxRanges.UNIT),

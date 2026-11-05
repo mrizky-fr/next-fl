@@ -8,11 +8,13 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import id.nextfl.core.analysis.AudioFrame
+import id.nextfl.core.model.SocialPlatform
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /** Circular DJ logo badge. */
@@ -102,6 +104,13 @@ class PulseRingTemplate(typeface: Typeface) {
         this.typeface = typeface
         letterSpacing = 0.12f
     }
+    private val handle = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        this.typeface = typeface
+        letterSpacing = 0.04f
+    }
+    private val socialIcons = SocialIcons()
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val flashPaint = Paint()
     private var backgroundImage: Bitmap? = null
     private var shake = 0f
@@ -173,7 +182,34 @@ class PulseRingTemplate(typeface: Typeface) {
         val pulsed = radius * (1f + kick * LOGO_PULSE * settings.sensitivity)
         if (settings.showHills) hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
         if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
-        drawTitle(canvas, settings.title, cx, cy + radius * 1.72f, unit)
+        val titleY = cy + radius * 1.72f
+        drawTitle(canvas, settings.title, cx, titleY, unit)
+        val socialY = if (settings.title.isBlank()) titleY - unit * TITLE_SIZE * 0.36f else titleY + unit * SOCIAL_BELOW_TITLE
+        if (settings.showSocial) drawSocial(canvas, cx, socialY)
+    }
+
+    // Icons then username, centered row
+    private fun drawSocial(canvas: Canvas, x: Float, y: Float) {
+        val platforms = SocialPlatform.entries.filter { it in settings.socialPlatforms }
+        val name = settings.socialUsername.trim()
+        if (platforms.isEmpty() && name.isEmpty()) return
+        val size = (unit * SOCIAL_ICON).roundToInt().coerceAtLeast(MIN_ICON_PX)
+        val gap = unit * SOCIAL_GAP
+        handle.textSize = unit * HANDLE_SIZE
+        handle.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb(160, 0, 0, 0))
+        val nameGap = if (platforms.isNotEmpty() && name.isNotEmpty()) gap * 1.6f else 0f
+        val nameWidth = if (name.isEmpty()) 0f else handle.measureText(name)
+        val iconsWidth = platforms.size * size + max(0, platforms.size - 1) * gap
+        var left = x - (iconsWidth + nameGap + nameWidth) / 2
+        for (platform in platforms) {
+            val bitmap = socialIcons.bitmap(platform, size)
+            canvas.drawBitmap(bitmap, left + (size - bitmap.width) / 2f, y - bitmap.height / 2f, iconPaint)
+            left += size + gap
+        }
+        if (name.isNotEmpty()) {
+            val start = if (platforms.isEmpty()) left else left - gap + nameGap
+            canvas.drawText(name, start, y + handle.textSize * 0.36f, handle)
+        }
     }
 
     private fun centerX() = width / 2f + shakeX
@@ -188,7 +224,7 @@ class PulseRingTemplate(typeface: Typeface) {
 
     private fun drawTitle(canvas: Canvas, text: String, x: Float, y: Float, unit: Float) {
         if (text.isBlank()) return
-        title.textSize = unit * 0.045f
+        title.textSize = unit * TITLE_SIZE
         title.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb(160, 0, 0, 0))
         canvas.drawText(text.uppercase(), x, y, title)
     }
@@ -200,5 +236,11 @@ class PulseRingTemplate(typeface: Typeface) {
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f
         const val LOGO_PULSE = 0.05f
+        const val TITLE_SIZE = 0.045f
+        const val SOCIAL_BELOW_TITLE = 0.06f
+        const val SOCIAL_ICON = 0.056f
+        const val SOCIAL_GAP = 0.016f
+        const val HANDLE_SIZE = 0.034f
+        const val MIN_ICON_PX = 8
     }
 }

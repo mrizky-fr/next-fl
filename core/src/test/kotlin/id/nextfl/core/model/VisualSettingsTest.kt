@@ -17,5 +17,16 @@ class VisualSettingsTest {
         val json = Json { ignoreUnknownKeys = true }
         val settings = json.decodeFromString(VisualSettings.serializer(), """{"particleCount":40}""")
         assertEquals(6, settings.cometCount)
+        assertEquals(false, settings.showSocial)
+        assertEquals(SocialPlatform.entries.toSet(), settings.socialPlatforms)
+    }
+
+    @Test
+    fun socialSettingsSurviveRoundTrip() {
+        val json = Json { ignoreUnknownKeys = true }
+        val original = VisualSettings(showSocial = true, socialUsername = "@djkyy", socialPlatforms = setOf(SocialPlatform.TIKTOK, SocialPlatform.SPOTIFY))
+        val decoded = json.decodeFromString(VisualSettings.serializer(), json.encodeToString(VisualSettings.serializer(), original))
+        assertEquals(original, decoded)
+        assertEquals(VisualSettings.MAX_USERNAME, Sanitize.visual(VisualSettings(socialUsername = "x".repeat(90))).socialUsername.length)
     }
 }

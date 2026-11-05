@@ -10,6 +10,14 @@ enum class AspectRatio(val width: Int, val height: Int, val label: String) {
 }
 
 @Serializable
+enum class SocialPlatform(val label: String) {
+    TIKTOK("TikTok"),
+    YOUTUBE("YouTube"),
+    SPOTIFY("Spotify"),
+    INSTAGRAM("Instagram"),
+}
+
+@Serializable
 data class VisualSettings(
     val templateId: String = "pulse-ring",
     val aspect: AspectRatio = AspectRatio.WIDE,
@@ -30,6 +38,9 @@ data class VisualSettings(
     val rippleAmount: Float = 0.5f,
     val pendulumAmount: Float = 0.3f,
     val glitchAmount: Float = 0.25f,
+    val showSocial: Boolean = false,
+    val socialUsername: String = "",
+    val socialPlatforms: Set<SocialPlatform> = SocialPlatform.entries.toSet(),
 ) {
     companion object {
         const val WHITE = 0xFFFFFFFF
@@ -42,5 +53,6 @@ data class VisualSettings(
 
         // Each comet has heavy trail
         const val MAX_COMETS = 16
+        const val MAX_USERNAME = 40
     }
 }
