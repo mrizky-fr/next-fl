@@ -4,9 +4,9 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL-debug.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.0-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.29-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
-<sub>Android 10+ · ±62,1 MB · Gratis</sub>
+<sub>Android 10+ · ±3,2 MB · Gratis</sub>
 
 </div>
 
@@ -60,7 +60,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 
 <div align="center">
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL-debug.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.0-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.29-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 </div>
 
@@ -87,10 +87,10 @@ Build dan uji dengan JDK bawaan Android Studio:
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
-.\gradlew.bat :core:test :app:assembleDebug
+.\gradlew.bat :core:test :app:assembleRelease
 ```
 
-APK debug dibuat di `app/build/outputs/apk/debug/NextFL-debug.apk`, lalu disalin ke [`release/NextFL-debug.apk`](release/NextFL-debug.apk) untuk tombol unduh. Build rilis memakai `:app:assembleRelease` (R8 dan resource shrinking aktif) dengan keystore di luar repo.
+APK rilis (R8 dan resource shrinking aktif) dibuat di `app/build/outputs/apk/release/NextFL-release.apk`, lalu disalin menimpa [`release/NextFL.apk`](release/NextFL.apk) untuk tombol unduh. `versionCode` diambil dari jumlah commit (`git rev-list --count HEAD`) dan `versionName` menjadi `0.1.<jumlah commit>`, jadi setiap perubahan otomatis menaikkan versi. Build debug tetap tersedia lewat `:app:assembleDebug`.
 
 Project terbagi dua modul:
 
@@ -99,13 +99,22 @@ Project terbagi dua modul:
 | `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA, FFT), mix engine, deteksi BPM dan beat. Bisa dipakai ulang untuk versi desktop. |
 | `app/` | Android: decode audio, playback `AudioTrack`, penyimpanan proyek, UI Compose, template visual, dan render video H.264 + AAC. |
 
-Tidak ada environment variable atau API key. Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
+Tidak ada API key. Kredensial tanda tangan rilis dibaca dari environment variable, atau dari `keystore.properties` bila variabelnya tidak diset. Salin [`keystore.properties.example`](keystore.properties.example) menjadi `keystore.properties`, lalu isi nilainya. Keystore dan file itu tidak di-commit. Tanpa keystore, build rilis tetap jalan tetapi APK-nya tidak bertanda tangan.
+
+| Variable | Fungsi | Default |
+|---|---|---|
+| `NEXTFL_STORE_FILE` | Path keystore, relatif ke root project | - |
+| `NEXTFL_STORE_PASSWORD` | Password keystore | - |
+| `NEXTFL_KEY_ALIAS` | Alias kunci | - |
+| `NEXTFL_KEY_PASSWORD` | Password kunci | - |
+
+Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
 </details>
 
 ## Catatan
 
-APK di tombol unduh adalah **build debug** untuk uji coba, bukan rilis Play Store. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)).
+APK di tombol unduh adalah **build rilis** bertanda tangan, bukan rilis Play Store. File ini selalu ditimpa versi terbaru; versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)).
 
 ## Pembuat
 
