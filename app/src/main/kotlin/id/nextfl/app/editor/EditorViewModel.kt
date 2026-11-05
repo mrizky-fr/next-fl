@@ -17,16 +17,15 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.nextfl.core.dsp.BpmDetector
-import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.edit.ClipOps
 import id.nextfl.core.edit.TrackOps
 import id.nextfl.core.edit.clipSpan
 import id.nextfl.core.engine.OfflineRenderer
 import id.nextfl.core.engine.RenderGraphBuilder
-import id.nextfl.core.engine.SourceResolver
 import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.Defaults
+import id.nextfl.core.model.DjSettings
 import id.nextfl.core.model.FxChain
 import id.nextfl.core.model.ProjectDoc
 import id.nextfl.core.model.Track
@@ -70,7 +69,6 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     val toasts = app.messages.toasts
     val busy = app.messages.busy
     val ready = app.session.ready
-    val pendingStretches = app.library.pendingStretches
     val libraryVersion = app.library.version
     val library = app.library
     val analysis = app.analysis
@@ -137,6 +135,21 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun setMasterDb(db: Float) = store.change("master") { it.copy(masterDb = db) }
+
+    fun updateDj(key: String, transform: (DjSettings) -> DjSettings) = store.change("dj:$key") { it.copy(dj = transform(it.dj)) }
+
+    // Synced clips move project BPM
+    fun setDeckRate(clipId: String, rate: Double) {
+        val state = store.current
+        val clip = state.doc.clips.find { it.id == clipId } ?: return
+        val assetBpm = state.assets[clip.assetId]?.bpm
+        val clamped = rate.coerceIn(MIN_DECK_RATE, MAX_DECK_RATE)
+        if (clip.syncTempo && assetBpm != null) {
+            setBpm(assetBpm * clamped)
+        } else {
+            updateClip(clipId, "speed:$clipId") { it.copy(speed = Math.round(clamped * RATE_STEPS) / RATE_STEPS) }
+        }
+    }
 
     // Clips
     fun updateClip(clipId: String, coalesce: String? = null, transform: (Clip) -> Clip) =
@@ -297,8 +310,7 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
             var target: ExportTarget? = null
             exportBusy("Menyiapkan export", 0f)
             try {
-                val resolver = prepareExportSources(state.doc, state.assets)
-                val graph = RenderGraphBuilder.build(state.doc, state.assets, AppContainer.SAMPLE_RATE, resolver)
+                val graph = RenderGraphBuilder.build(state.doc, state.assets, AppContainer.SAMPLE_RATE, app.library)
                 val output = render(graph) { created -> created.also { target = it } }
                 ensureActive()
                 app.exporter.publish(output)
@@ -322,17 +334,6 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     fun cancelExport() {
         exportJob?.cancel()
-    }
-
-    private suspend fun prepareExportSources(doc: ProjectDoc, assets: Map<String, AudioAsset>): SourceResolver {
-        for (clip in doc.clips) {
-            val voicing = clipVoicing(clip, clipSpan(clip, assets, doc.bpm).rate)
-            if (voicing.needsStretch) {
-                exportBusy("Time-stretch ${clip.name}", null)
-                withContext(Dispatchers.Default) { app.library.ensureStretched(clip.assetId, voicing.stretch) }
-            }
-        }
-        return app.library
     }
 
     // Project
@@ -380,6 +381,9 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         private const val MAX_CLIP_GAIN_DB = 24f
         private const val DECODE_SHARE = 0.85f
         private const val MAX_NAME = 80
+        const val MIN_DECK_RATE = 0.5
+        const val MAX_DECK_RATE = 2.0
+        private const val RATE_STEPS = 10_000.0
 
         fun formatBpm(bpm: Double): String =
             if (bpm % 1.0 == 0.0) bpm.toInt().toString() else String.format(Locale.ROOT, "%.1f", bpm)

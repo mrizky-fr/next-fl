@@ -12,8 +12,8 @@ import kotlin.math.roundToLong
 
 /** Density-based pixel sizes. */
 class TimelineMetrics(density: Float) {
-    val rowHeight = 64f * density
-    val rulerHeight = 26f * density
+    val rowHeight = ROW_DP * density
+    val rulerHeight = RULER_DP * density
     val clipHeader = 15f * density
     val edgeHandle = 18f * density
     val minGridPx = 12f * density
@@ -22,6 +22,11 @@ class TimelineMetrics(density: Float) {
 
     // Keeps playhead handle fully visible
     val originX = 10f * density
+
+    companion object {
+        const val ROW_DP = 64f
+        const val RULER_DP = 26f
+    }
 }
 
 sealed interface TimelineHit {

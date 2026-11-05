@@ -18,7 +18,6 @@ class EngineTest {
 
     private val resolver = object : SourceResolver {
         override fun original(assetId: String): PcmSource? = if (assetId == "tone") tone else null
-        override fun stretched(assetId: String, rate: Double): PcmSource? = null
     }
 
     private fun graph(startBeat: Double = 2.0, mute: Boolean = false): RenderGraph {

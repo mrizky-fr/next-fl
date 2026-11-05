@@ -24,7 +24,7 @@ class AppContainer(private val app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val paths = StoragePaths(app.filesDir, app.cacheDir)
     val store = ProjectStore()
-    val library = AssetLibrary(paths, SAMPLE_RATE, scope)
+    val library = AssetLibrary(paths, SAMPLE_RATE)
     val playback = PlaybackController(app, store, library, scope, SAMPLE_RATE)
     val analysis = VisualAnalysis(playback)
     val decoder = AudioDecoder(app, SAMPLE_RATE)

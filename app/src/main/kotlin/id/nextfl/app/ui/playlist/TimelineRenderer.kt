@@ -8,7 +8,6 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import id.nextfl.core.edit.ClipSpan
 import id.nextfl.core.edit.clipSpan
-import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.model.AssetMap
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.ProjectDoc
@@ -36,7 +35,6 @@ class TimelineScene(
     val playheadGrabbed: Boolean,
     val snapGuide: Double?,
     val peaks: (String) -> WaveformPeaks?,
-    val isStretching: (Clip, Double) -> Boolean,
 )
 
 /** Draws playlist via android.graphics. */
@@ -195,13 +193,10 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
         val end = min(right, scene.width) - LABEL_PADDING * density
         if (end - start < MIN_LABEL * density) return
         var nameEnd = end
-        val badge = when {
-            scene.isStretching(clip, clipVoicing(clip, span.rate).stretch) -> "stretch…"
-            else -> listOfNotNull(
-                String.format(Locale.ROOT, "×%.2f", span.rate).takeIf { abs(span.rate - 1) > 1e-3 },
-                formatSemitones(clip.pitchSemitones.toFloat()).takeIf { clip.pitchSemitones != 0.0 },
-            ).joinToString(" ").ifEmpty { null }
-        }
+        val badge = listOfNotNull(
+            String.format(Locale.ROOT, "×%.2f", span.rate).takeIf { abs(span.rate - 1) > 1e-3 },
+            formatSemitones(clip.pitchSemitones.toFloat()).takeIf { clip.pitchSemitones != 0.0 },
+        ).joinToString(" ").ifEmpty { null }
         if (badge != null) {
             val badgeWidth = text.measureText(badge)
             if (end - start > badgeWidth + BADGE_ROOM * density) {

@@ -33,7 +33,6 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
     val livePosition = remember { mutableDoubleStateOf(0.0) }
     val follow by rememberUpdatedState(ui.follow)
     val libraryVersion by vm.libraryVersion.collectAsState()
-    val pending by vm.pendingStretches.collectAsState()
     val viewport = vm.viewport
 
     LaunchedEffect(density) { viewport.ensureZoom(density) }
@@ -68,7 +67,6 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
             playheadGrabbed = gestures.playheadGrabbed,
             snapGuide = gestures.snapGuide,
             peaks = { id -> libraryVersion.let { vm.library.peaks(id) } },
-            isStretching = { clip, rate -> pending.isNotEmpty() && vm.library.isPending(clip.assetId, rate) },
         )
         drawIntoCanvas { renderer.draw(it.nativeCanvas, scene) }
     }

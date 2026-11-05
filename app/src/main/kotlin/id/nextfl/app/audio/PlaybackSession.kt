@@ -69,10 +69,11 @@ class PlaybackSession(private val engine: MixEngine) : Thread("nextfl-audio") {
     }
 
     private companion object {
-        const val BLOCK_FRAMES = 1024
-        // Render-ahead room for visual sync
-        const val BUFFER_BLOCKS = 6
+        // Small blocks: edits heard sooner
+        const val BLOCK_FRAMES = 512
+        const val BUFFER_BLOCKS = 4
         const val JOIN_TIMEOUT_MS = 500L
+        const val BYTES_PER_FRAME = 8
 
         fun buildTrack(sampleRate: Int): AudioTrack {
             val format = AudioFormat.Builder()
@@ -85,7 +86,7 @@ class PlaybackSession(private val engine: MixEngine) : Thread("nextfl-audio") {
                 .setAudioAttributes(PlaybackAttributes.music)
                 .setAudioFormat(format)
                 .setTransferMode(AudioTrack.MODE_STREAM)
-                .setBufferSizeInBytes(maxOf(minBytes, BLOCK_FRAMES * 8 * BUFFER_BLOCKS))
+                .setBufferSizeInBytes(maxOf(minBytes, BLOCK_FRAMES * BYTES_PER_FRAME * BUFFER_BLOCKS))
                 .build()
         }
     }

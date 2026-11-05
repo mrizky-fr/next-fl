@@ -122,6 +122,15 @@ data class Clip(
     }
 }
 
+/** Deck FX; zero is off. */
+@Serializable
+data class DjSettings(
+    val filter: Float = 0f,
+    val echo: Float = 0f,
+    val flanger: Float = 0f,
+    val crush: Float = 0f,
+)
+
 @Serializable
 data class ProjectDoc(
     val bpm: Double = DEFAULT_BPM,
@@ -129,6 +138,7 @@ data class ProjectDoc(
     val masterFx: FxChain = FxChain(),
     val tracks: List<Track> = emptyList(),
     val clips: List<Clip> = emptyList(),
+    val dj: DjSettings = DjSettings(),
 ) {
     companion object {
         const val DEFAULT_BPM = 128.0

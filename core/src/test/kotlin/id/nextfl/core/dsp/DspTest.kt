@@ -2,49 +2,12 @@ package id.nextfl.core.dsp
 
 import id.nextfl.core.TestSignals
 import id.nextfl.core.model.EqSettings
-import id.nextfl.core.pcm.ArrayStereoSink
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
-class TimeStretcherTest {
-    private val rate = 22_050
-
-    private fun stretch(input: FloatArray, speed: Double): FloatArray {
-        val sink = ArrayStereoSink()
-        TimeStretcher(rate).stretch(TestSignals.stereo(input, rate), speed, sink)
-        val source = sink.toSource(rate)
-        return FloatArray(source.frames) { source.left(it) }
-    }
-
-    @Test
-    fun speedsUpWhileKeepingPitch() {
-        val input = TestSignals.sine(440.0, 2.0, rate)
-        val output = stretch(input, 1.25)
-        assertEquals(ceil(input.size / 1.25).toInt(), output.size)
-        assertEquals(440.0, TestSignals.zeroCrossingRate(output, rate), 440 * 0.03)
-    }
-
-    @Test
-    fun slowsDownWhileKeepingPitch() {
-        val input = TestSignals.sine(220.0, 1.0, rate)
-        val output = stretch(input, 0.8)
-        assertEquals(ceil(input.size / 0.8).toInt(), output.size)
-        assertEquals(220.0, TestSignals.zeroCrossingRate(output, rate), 220 * 0.03)
-    }
-
-    @Test
-    fun stopsWhenCancelled() {
-        val input = TestSignals.sine(220.0, 3.0, rate)
-        val finished = TimeStretcher(rate).stretch(TestSignals.stereo(input, rate), 1.1, ArrayStereoSink(), isCancelled = { true })
-        assertFalse(finished)
-    }
-}
 
 class BpmDetectorTest {
     private val rate = 22_050

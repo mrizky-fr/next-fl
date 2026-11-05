@@ -1,5 +1,6 @@
 package id.nextfl.core.engine
 
+import id.nextfl.core.dsp.DjEffects
 import id.nextfl.core.dsp.Limiter
 import id.nextfl.core.pcm.PcmSource
 import java.util.concurrent.ConcurrentHashMap
@@ -26,7 +27,11 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private val masterR = FloatArray(maxBlock)
     private val limiter = Limiter(sampleRate)
     private val masterChain = FxChainProcessor(sampleRate)
+    private val djEffects = DjEffects(sampleRate)
     private val masterHistory = PeakHistory()
+    private val grains = GrainReader(sampleRate)
+    private val grainStates = HashMap<String, GrainReader.State>()
+    private var grainGraph: RenderGraph? = null
     private var masterGain = 1f
     val tap = MasterTap()
 
@@ -136,6 +141,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     }
 
     private fun mixVoices(current: RenderGraph, frames: Int) {
+        if (grainGraph !== current) {
+            grainGraph = current
+            grainStates.keys.retainAll(current.voices.mapTo(HashSet()) { it.id })
+        }
         val blockStart = songFrame
         val blockEnd = blockStart + frames
         for (voice in current.voices) {
@@ -147,6 +156,12 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
                 val local = blockStart + i - voice.startFrame
                 val gain = voice.envelope.valueAt(local.toDouble() / sampleRate).toFloat()
                 if (gain == 0f) continue
+                if (voice.granular) {
+                    grains.sample(voice, grainStates.getOrPut(voice.id) { GrainReader.State() }, local)
+                    target.left[i] += grains.left * gain
+                    target.right[i] += grains.right * gain
+                    continue
+                }
                 val position = voice.sourceStart + local * voice.step
                 target.left[i] += Interpolator.left(voice.source, position) * gain
                 target.right[i] += Interpolator.right(voice.source, position) * gain
@@ -166,6 +181,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
             }
         }
         masterChain.process(current.masterFx, masterL, masterR, frames)
+        djEffects.process(current.dj, current.bpm, masterL, masterR, frames)
         val step = (current.masterGain - masterGain) / frames
         var peak = 0f
         for (i in 0 until frames) {

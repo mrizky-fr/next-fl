@@ -76,7 +76,7 @@ fun ClipInspector(vm: EditorViewModel, state: EditorState, clip: Clip) {
 }
 
 @Composable
-private fun ClipLevelSection(vm: EditorViewModel, clip: Clip, duration: Double) {
+internal fun ClipLevelSection(vm: EditorViewModel, clip: Clip, duration: Double) {
     val maxFade = (duration / 2).coerceAtLeast(0.01).toFloat()
     PanelSection("Klip", action = { FlatButton("Normalize", Icons.Rounded.AutoFixHigh, { vm.normalizeClip(clip.id) }, variant = ButtonVariant.GHOST) }) {
         ValueSlider("Gain", clip.gainDb, -24f..24f, { v -> vm.updateClip(clip.id, "gain:${clip.id}") { it.copy(gainDb = v) } }, { formatDb(it) }, origin = 0f)
@@ -86,7 +86,7 @@ private fun ClipLevelSection(vm: EditorViewModel, clip: Clip, duration: Double) 
 }
 
 @Composable
-private fun TempoSection(vm: EditorViewModel, clip: Clip, asset: AudioAsset?, rate: Double, projectBpm: Double) {
+internal fun TempoSection(vm: EditorViewModel, clip: Clip, asset: AudioAsset?, rate: Double, projectBpm: Double) {
     var editingBpm by remember { mutableStateOf(false) }
     val sourceBpm = asset?.bpm
     val bpmLabel = sourceBpm?.let { "${EditorViewModel.formatBpm(it)} BPM" } ?: "BPM"

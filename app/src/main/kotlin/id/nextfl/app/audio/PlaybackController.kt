@@ -13,12 +13,10 @@ import id.nextfl.core.engine.MixEngine
 import id.nextfl.core.engine.RenderGraphBuilder
 import id.nextfl.core.state.ProjectStore
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -52,16 +50,12 @@ class PlaybackController(
         observeProject()
     }
 
-    @OptIn(FlowPreview::class)
     private fun observeProject() {
         val project = store.state.map { it.doc to it.assets }.distinctUntilChanged()
         scope.launch {
             combine(project, library.version) { pair, _ -> pair }.collect { (doc, assets) ->
                 engine.setGraph(RenderGraphBuilder.build(doc, assets, engine.sampleRate, library))
             }
-        }
-        scope.launch {
-            project.debounce(STRETCH_DEBOUNCE_MS).collect { (doc, assets) -> library.syncStretchJobs(doc, assets) }
         }
     }
 
@@ -134,7 +128,6 @@ class PlaybackController(
         const val MAX_FRAME_GAP_SECONDS = 0.25
         const val SNAP_SECONDS = 0.1
         const val CORRECTION = 0.1
-        const val STRETCH_DEBOUNCE_MS = 300L
     }
 }
 

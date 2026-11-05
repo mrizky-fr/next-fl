@@ -23,7 +23,6 @@ class ExportFxTest {
     private val assets = mapOf("tone" to AudioAsset("tone", "Tone", 2.0, null))
     private val resolver = object : SourceResolver {
         override fun original(assetId: String): PcmSource? = if (assetId == "tone") tone else null
-        override fun stretched(assetId: String, rate: Double): PcmSource? = null
     }
 
     private fun export(edit: (ProjectDoc, Track) -> ProjectDoc = { doc, _ -> doc }): Pair<FloatArray, FloatArray> {

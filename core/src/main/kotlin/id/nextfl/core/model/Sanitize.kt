@@ -17,6 +17,12 @@ object Sanitize {
             bpm = doc.bpm.coerceIn(ProjectDoc.MIN_BPM, ProjectDoc.MAX_BPM),
             masterDb = doc.masterDb.coerceIn(AudioMath.MIN_DB, 6f),
             masterFx = fx(doc.masterFx),
+            dj = DjSettings(
+                filter = doc.dj.filter.coerceIn(FxRanges.BIPOLAR),
+                echo = doc.dj.echo.coerceIn(FxRanges.UNIT),
+                flanger = doc.dj.flanger.coerceIn(FxRanges.UNIT),
+                crush = doc.dj.crush.coerceIn(FxRanges.UNIT),
+            ),
             tracks = tracks,
             clips = clips,
         )
