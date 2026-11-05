@@ -146,7 +146,7 @@ class PulseRingTemplate(typeface: Typeface) {
     // State advances once per frame
     private fun update(frame: AudioFrame, dt: Float, settings: VisualSettings) {
         particles.update(settings.particleCount, dt, frame.energy, frame.kick)
-        comets.update(if (settings.streaks) COMET_COUNT else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
+        comets.update(if (settings.streaks) settings.cometCount else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
         ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
         pendulum.update(frame.beat, frame.beatStrength, settings.pendulumAmount, dt)
@@ -199,7 +199,6 @@ class PulseRingTemplate(typeface: Typeface) {
         const val SHAKE_DECAY = 9f
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f
-        const val COMET_COUNT = 6
         const val LOGO_PULSE = 0.05f
     }
 }

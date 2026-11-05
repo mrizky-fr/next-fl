@@ -91,5 +91,6 @@ object Sanitize {
         backgroundDim = settings.backgroundDim.coerceIn(0f, 0.95f),
         backgroundBlur = settings.backgroundBlur.coerceIn(0f, 20f),
         particleCount = settings.particleCount.coerceIn(0, 200),
+        cometCount = settings.cometCount.coerceIn(0, VisualSettings.MAX_COMETS),
     )
 }

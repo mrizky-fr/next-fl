@@ -171,6 +171,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
+            ValueSlider("Jumlah komet", settings.cometCount.toFloat(), 0f..VisualSettings.MAX_COMETS.toFloat(), { v -> update { it.copy(cometCount = v.roundToInt()) } }, { it.roundToInt().toString() })
             ToggleRow("Goyang saat beat", settings.shake, { on -> update { it.copy(shake = on) } })
         }
         PanelSection("Background") {

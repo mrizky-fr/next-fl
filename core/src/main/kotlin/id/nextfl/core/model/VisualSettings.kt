@@ -22,6 +22,7 @@ data class VisualSettings(
     val grayscale: Boolean = true,
     val particleCount: Int = 70,
     val streaks: Boolean = true,
+    val cometCount: Int = 6,
     val shake: Boolean = true,
     val syncMs: Int = 100,
     val showLogo: Boolean = true,
@@ -38,5 +39,8 @@ data class VisualSettings(
 
         // Limited by audio render-ahead
         const val MAX_SYNC_MS = 250
+
+        // Each comet has heavy trail
+        const val MAX_COMETS = 16
     }
 }
