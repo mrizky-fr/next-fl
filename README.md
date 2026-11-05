@@ -4,7 +4,7 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.33-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.36-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 <sub>Android 10+ · ±3,2 MB · Gratis</sub>
 
@@ -60,7 +60,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 
 <div align="center">
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.33-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.36-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 </div>
 
