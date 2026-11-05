@@ -148,17 +148,17 @@ private fun JogWheel(vm: EditorViewModel, state: EditorState, clip: Clip?, playi
             drawCircle(Palette.Control, radius)
             drawCircle(PLATTER, radius * 0.92f)
             for (i in 1..GROOVES) {
-                drawCircle(GROOVE, radius * (0.42f + i * 0.075f), style = Stroke(1.dp.toPx()))
+                drawCircle(GROOVE, radius * (0.5f + i * 0.075f), style = Stroke(1.dp.toPx()))
             }
             rotate(angle) {
                 drawLine(Palette.Accent, Offset(center.x, center.y - radius * 0.9f), Offset(center.x, center.y - radius * 0.5f), 4.dp.toPx(), StrokeCap.Round)
                 drawCircle(Palette.White, 3.dp.toPx(), Offset(center.x, center.y + radius * 0.7f))
             }
-            drawCircle(Palette.Accent, radius * 0.36f)
+            drawCircle(Palette.Accent, radius * LABEL_RADIUS)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val value = assetBpm?.let { String.format(Locale.ROOT, "%.1f", it * rate) } ?: String.format(Locale.ROOT, "×%.3f", rate)
-            Text(value, color = Palette.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(value, color = Palette.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(if (assetBpm != null) "BPM" else "SPEED", style = TextStyles.Label, color = Palette.White)
             Text(String.format(Locale.ROOT, "%+.1f%%", (rate - 1) * 100), style = TextStyles.LcdSmall, color = Palette.White)
         }
@@ -178,7 +178,8 @@ private fun DjFxRow(vm: EditorViewModel, dj: DjSettings) {
 private val KNOB = 38.dp
 private val PLATTER = Color(0xFF0B0C0E)
 private val GROOVE = Color(0x14FFFFFF)
-private const val GROOVES = 6
+private const val GROOVES = 5
+private const val LABEL_RADIUS = 0.46f
 
 private fun formatFilter(value: Float): String = when {
     value <= -OFF -> "LPF ${(-value * 100).roundToInt()}%"

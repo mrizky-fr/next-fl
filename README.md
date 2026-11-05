@@ -31,7 +31,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>Tempo yang menurut</h3>
-      BPM terdeteksi otomatis. Klip bisa ikut BPM project, diatur speed-nya, dan nada tetap terkunci lewat time-stretch. Nada juga bisa dinaikkan atau diturunkan sampai 12 semitone tanpa mengubah speed atau BPM.
+      BPM terdeteksi otomatis. Klip bisa ikut BPM project, diatur speed-nya, dan nada tetap terkunci lewat time-stretch real-time. Nada juga bisa dinaikkan atau diturunkan sampai 12 semitone tanpa mengubah speed atau BPM, dan langsung terdengar saat digeser.
     </td>
   </tr>
   <tr>
@@ -47,7 +47,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
   <tr>
     <td width="50%" valign="top">
       <h3>Mode Ngonten</h3>
-      Track di kiri, preview visual kotak di kanan. Edit lagu sambil melihat hasil kontennya secara langsung.
+      Satu track di atas, deck DJ di bawahnya: jog wheel untuk mengatur BPM, knob Filter, Echo, Flanger, dan Crush, plus pengaturan speed dan nada klip. Preview visual kotak di kanan.
     </td>
     <td width="50%" valign="top">
       <h3>Export sekali ketuk</h3>
@@ -96,7 +96,7 @@ Project terbagi dua modul:
 
 | Modul | Isi |
 |---|---|
-| `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA, FFT), mix engine, deteksi BPM dan beat. Bisa dipakai ulang untuk versi desktop. |
+| `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA real-time, efek DJ, FFT), mix engine, deteksi BPM dan beat. Bisa dipakai ulang untuk versi desktop. |
 | `app/` | Android: decode audio, playback `AudioTrack`, penyimpanan proyek, UI Compose, template visual, dan render video H.264 + AAC. |
 
 Tidak ada API key. Kredensial tanda tangan rilis dibaca dari environment variable, atau dari `keystore.properties` bila variabelnya tidak diset. Salin [`keystore.properties.example`](keystore.properties.example) menjadi `keystore.properties`, lalu isi nilainya. Keystore dan file itu tidak di-commit. Tanpa keystore, build rilis tetap jalan tetapi APK-nya tidak bertanda tangan.
