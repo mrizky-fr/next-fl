@@ -4,7 +4,7 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.29-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.33-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 <sub>Android 10+ · ±3,2 MB · Gratis</sub>
 
@@ -31,7 +31,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>Tempo yang menurut</h3>
-      BPM terdeteksi otomatis. Klip bisa ikut BPM project, diatur speed-nya, dan nada tetap terkunci lewat time-stretch.
+      BPM terdeteksi otomatis. Klip bisa ikut BPM project, diatur speed-nya, dan nada tetap terkunci lewat time-stretch. Nada juga bisa dinaikkan atau diturunkan sampai 12 semitone tanpa mengubah speed atau BPM.
     </td>
   </tr>
   <tr>
@@ -41,7 +41,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>NextPlayer</h3>
-      Template Pulse Ring dengan logo DJ dan background pilihanmu. Gunung beat, komet berasap, dan partikel bereaksi pada drum, dengan slider sinkron untuk HP mana pun.
+      Template Pulse Ring dengan logo DJ dan background pilihanmu. Gunung beat, komet berasap, dan partikel bereaksi pada drum. Jumlah komet dan partikel bisa diatur, ada slider sinkron untuk HP mana pun, dan ikon 3D TikTok, YouTube, Spotify, serta Instagram dengan username bisa dipasang di bawah judul.
     </td>
   </tr>
   <tr>
@@ -60,7 +60,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 
 <div align="center">
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.29-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.33-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 </div>
 
