@@ -25,3 +25,9 @@ bin/
 
 # Debug APK too large for git
 release/*-debug.apk
+
+# Release signing secrets
+keystore/
+keystore.properties
+*.jks
+*.keystore
