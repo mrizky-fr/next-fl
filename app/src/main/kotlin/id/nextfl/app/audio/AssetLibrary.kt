@@ -2,6 +2,7 @@ package id.nextfl.app.audio
 
 import id.nextfl.core.dsp.TimeStretcher
 import id.nextfl.core.edit.clipSpan
+import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.engine.SourceResolver
 import id.nextfl.core.model.AssetMap
 import id.nextfl.core.model.ProjectDoc
@@ -85,8 +86,8 @@ class AssetLibrary(
     /** Starts needed jobs, drops stale. */
     fun syncStretchJobs(doc: ProjectDoc, assets: AssetMap) {
         val needed = doc.clips.mapNotNull { clip ->
-            val rate = clipSpan(clip, assets, doc.bpm).rate
-            if (clip.keepPitch && !TimeStretcher.isUnity(rate) && loaded.containsKey(clip.assetId)) clip.assetId to rate else null
+            val voicing = clipVoicing(clip, clipSpan(clip, assets, doc.bpm).rate)
+            if (voicing.needsStretch && loaded.containsKey(clip.assetId)) clip.assetId to voicing.stretch else null
         }.associateBy { (assetId, rate) -> key(assetId, rate) }
 
         jobs.keys.filterNot { it in needed }.forEach { jobs.remove(it)?.cancel() }

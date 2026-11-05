@@ -17,7 +17,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.nextfl.core.dsp.BpmDetector
-import id.nextfl.core.dsp.TimeStretcher
+import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.edit.ClipOps
 import id.nextfl.core.edit.TrackOps
 import id.nextfl.core.edit.clipSpan
@@ -326,10 +326,10 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     private suspend fun prepareExportSources(doc: ProjectDoc, assets: Map<String, AudioAsset>): SourceResolver {
         for (clip in doc.clips) {
-            val rate = clipSpan(clip, assets, doc.bpm).rate
-            if (clip.keepPitch && !TimeStretcher.isUnity(rate)) {
+            val voicing = clipVoicing(clip, clipSpan(clip, assets, doc.bpm).rate)
+            if (voicing.needsStretch) {
                 exportBusy("Time-stretch ${clip.name}", null)
-                withContext(Dispatchers.Default) { app.library.ensureStretched(clip.assetId, rate) }
+                withContext(Dispatchers.Default) { app.library.ensureStretched(clip.assetId, voicing.stretch) }
             }
         }
         return app.library

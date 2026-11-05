@@ -1,9 +1,9 @@
 package id.nextfl.core.engine
 
-import id.nextfl.core.dsp.TimeStretcher
 import id.nextfl.core.edit.ClipEnvelope
 import id.nextfl.core.edit.TrackOps
 import id.nextfl.core.edit.clipSpan
+import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.model.AssetMap
 import id.nextfl.core.model.ProjectDoc
 import id.nextfl.core.model.FxChain
@@ -60,11 +60,13 @@ object RenderGraphBuilder {
         val voices = doc.clips.filter { it.trackId in trackIds }.mapNotNull { clip ->
             val original = resolver.original(clip.assetId) ?: return@mapNotNull null
             val span = clipSpan(clip, assets, doc.bpm)
-            val stretched = if (clip.keepPitch && !TimeStretcher.isUnity(span.rate)) resolver.stretched(clip.assetId, span.rate) else null
+            val voicing = clipVoicing(clip, span.rate)
+            val stretched = if (voicing.needsStretch) resolver.stretched(clip.assetId, voicing.stretch) else null
             val source = stretched ?: original
             val sourceRate = source.sampleRate.toDouble()
-            val sourceOffset = if (stretched != null) clip.offset / span.rate else clip.offset
-            val step = (if (stretched != null) 1.0 else span.rate) * sourceRate / sampleRate
+            val sourceOffset = if (stretched != null) clip.offset / voicing.stretch else clip.offset
+            // Unready variant: tempo right, pitch off
+            val step = (if (stretched != null) voicing.pitch else span.rate) * sourceRate / sampleRate
             ClipVoice(
                 trackId = clip.trackId,
                 startFrame = (span.start * sampleRate).roundToLong(),

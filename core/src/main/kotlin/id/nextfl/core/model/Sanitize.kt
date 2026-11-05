@@ -78,6 +78,7 @@ object Sanitize {
         fadeIn = clip.fadeIn.coerceAtLeast(0.0),
         fadeOut = clip.fadeOut.coerceAtLeast(0.0),
         speed = clip.speed.coerceIn(0.25, 4.0),
+        pitchSemitones = clip.pitchSemitones.coerceIn(-Clip.MAX_PITCH_SEMITONES, Clip.MAX_PITCH_SEMITONES),
     )
 
     fun visual(settings: VisualSettings): VisualSettings = settings.copy(

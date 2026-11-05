@@ -15,4 +15,5 @@ object FxRanges {
     val REVERB_TRIM_DB = -24f..6f
     val GRAPHIC_GAIN = -GraphicEqSettings.MAX_GAIN_DB..GraphicEqSettings.MAX_GAIN_DB
     val LEVELLER_GAIN = 0f..LevellerSettings.MAX_GAIN_DB
+    val PITCH = -Clip.MAX_PITCH_SEMITONES.toFloat()..Clip.MAX_PITCH_SEMITONES.toFloat()
 }

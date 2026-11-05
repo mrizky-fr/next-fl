@@ -1,8 +1,10 @@
 package id.nextfl.core.edit
 
+import id.nextfl.core.dsp.TimeStretcher
 import id.nextfl.core.model.AssetMap
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.ProjectDoc
+import id.nextfl.core.util.AudioMath
 import id.nextfl.core.util.Beats
 import kotlin.math.max
 import kotlin.math.min
@@ -11,6 +13,17 @@ const val MIN_CLIP_SECONDS = 0.05
 const val DECLICK_SECONDS = 0.004
 
 data class ClipSpan(val start: Double, val end: Double, val duration: Double, val rate: Double)
+
+/** WSOLA rate, then resample ratio. */
+data class ClipVoicing(val stretch: Double, val pitch: Double) {
+    val needsStretch: Boolean get() = !TimeStretcher.isUnity(stretch)
+}
+
+// Stretch then resample shifts pitch
+fun clipVoicing(clip: Clip, rate: Double): ClipVoicing {
+    val pitch = (if (clip.keepPitch) 1.0 else rate) * AudioMath.semitonesToRatio(clip.pitchSemitones)
+    return ClipVoicing(rate / pitch, pitch)
+}
 
 fun clipRate(clip: Clip, assetBpm: Double?, bpm: Double): Double =
     if (clip.syncTempo && assetBpm != null && assetBpm > 0) bpm / assetBpm else clip.speed

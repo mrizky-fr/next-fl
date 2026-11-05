@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import id.nextfl.core.edit.ClipSpan
 import id.nextfl.core.edit.clipSpan
+import id.nextfl.core.edit.clipVoicing
 import id.nextfl.core.model.AssetMap
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.ProjectDoc
@@ -195,9 +196,11 @@ class TimelineRenderer(private val geometry: TimelineGeometry, private val densi
         if (end - start < MIN_LABEL * density) return
         var nameEnd = end
         val badge = when {
-            scene.isStretching(clip, span.rate) -> "stretch…"
-            abs(span.rate - 1) > 1e-3 -> String.format(Locale.ROOT, "×%.2f", span.rate)
-            else -> null
+            scene.isStretching(clip, clipVoicing(clip, span.rate).stretch) -> "stretch…"
+            else -> listOfNotNull(
+                String.format(Locale.ROOT, "×%.2f", span.rate).takeIf { abs(span.rate - 1) > 1e-3 },
+                formatSemitones(clip.pitchSemitones.toFloat()).takeIf { clip.pitchSemitones != 0.0 },
+            ).joinToString(" ").ifEmpty { null }
         }
         if (badge != null) {
             val badgeWidth = text.measureText(badge)

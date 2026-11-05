@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import id.nextfl.core.edit.clipSpan
 import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.Clip
+import id.nextfl.core.model.FxRanges
 import id.nextfl.core.state.EditorState
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.ui.components.ButtonVariant
@@ -47,6 +48,8 @@ import id.nextfl.app.ui.components.TextInput
 import id.nextfl.app.ui.components.ToggleRow
 import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun ClipInspector(vm: EditorViewModel, state: EditorState, clip: Clip) {
@@ -104,6 +107,9 @@ private fun TempoSection(vm: EditorViewModel, clip: Clip, asset: AudioAsset?, ra
             checked = clip.keepPitch,
             onChange = { checked -> vm.updateClip(clip.id) { it.copy(keepPitch = checked) } },
         )
+        ValueSlider("Nada", clip.pitchSemitones.toFloat(), FxRanges.PITCH, { v ->
+            vm.updateClip(clip.id, "pitch:${clip.id}") { it.copy(pitchSemitones = v.roundToInt().toDouble()) }
+        }, ::formatSemitones, origin = 0f)
     }
     if (editingBpm && asset != null) AssetBpmDialog(asset, onSave = { vm.setAssetBpm(asset.id, it) }) { editingBpm = false }
 }
@@ -135,6 +141,11 @@ private fun AssetBpmDialog(asset: AudioAsset, onSave: (Double?) -> Unit, onDismi
 fun formatDb(db: Float): String = when {
     db <= -60f -> "-∞"
     else -> "%+.1f dB".format(db)
+}
+
+fun formatSemitones(semitones: Float): String {
+    val steps = semitones.roundToInt()
+    return if (steps == 0) "0 st" else String.format(Locale.ROOT, "%+d st", steps)
 }
 
 fun formatSeconds(seconds: Float): String = if (seconds < 1f) "${(seconds * 1000).toInt()} ms" else "%.2f s".format(seconds)

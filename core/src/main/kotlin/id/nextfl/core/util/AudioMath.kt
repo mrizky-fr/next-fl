@@ -17,6 +17,8 @@ object AudioMath {
     fun faderToDb(position: Float): Float = gainToDb(position * position * FADER_HEADROOM)
 
     fun dbToFader(db: Float): Float = sqrt(dbToGain(db) / FADER_HEADROOM)
+
+    fun semitonesToRatio(semitones: Double): Double = 2.0.pow(semitones / 12)
 }
 
 object Beats {

@@ -115,7 +115,12 @@ data class Clip(
     val syncTempo: Boolean = false,
     val speed: Double = 1.0,
     val keepPitch: Boolean = true,
-)
+    val pitchSemitones: Double = 0.0,
+) {
+    companion object {
+        const val MAX_PITCH_SEMITONES = 12.0
+    }
+}
 
 @Serializable
 data class ProjectDoc(
