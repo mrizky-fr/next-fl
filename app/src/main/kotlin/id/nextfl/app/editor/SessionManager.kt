@@ -6,6 +6,7 @@ import id.nextfl.core.model.Sanitize
 import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.state.ProjectStore
 import id.nextfl.app.audio.AssetLibrary
+import id.nextfl.app.audio.LoadedAsset
 import id.nextfl.app.data.ProjectRepository
 import id.nextfl.app.data.SavedProject
 import id.nextfl.app.data.VisualImage
@@ -66,13 +67,21 @@ class SessionManager(
         visuals.settings.value = Sanitize.visual(saved.visual)
         val assets: AssetMap = withContext(Dispatchers.Default) {
             saved.assets.mapNotNull { asset ->
-                library.open(asset.id)?.let { loaded ->
+                openSafely(asset.id)?.let { loaded ->
                     library.register(asset.id, loaded)
                     asset.id to asset
                 }
             }.toMap()
         }
         store.load(Sanitize.project(saved.doc, assets), assets)
+    }
+
+    // One bad file keeps project
+    private fun openSafely(assetId: String): LoadedAsset? = try {
+        library.open(assetId)
+    } catch (error: Exception) {
+        android.util.Log.w(TAG, "Asset unreadable: $assetId", error)
+        null
     }
 
     @OptIn(FlowPreview::class)

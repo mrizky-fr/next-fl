@@ -15,6 +15,16 @@ object TrackOps {
     fun update(doc: ProjectDoc, trackId: String, transform: (Track) -> Track): ProjectDoc =
         doc.copy(tracks = doc.tracks.map { if (it.id == trackId) transform(it) else it })
 
+    // Index clamps, clips follow id
+    fun move(doc: ProjectDoc, trackId: String, toIndex: Int): ProjectDoc {
+        val from = doc.tracks.indexOfFirst { it.id == trackId }
+        if (from < 0) return doc
+        val target = toIndex.coerceIn(0, doc.tracks.lastIndex)
+        if (target == from) return doc
+        val reordered = doc.tracks.toMutableList().apply { add(target, removeAt(from)) }
+        return doc.copy(tracks = reordered)
+    }
+
     // Solo overrides mute
     fun isAudible(track: Track, tracks: List<Track>): Boolean =
         if (tracks.any { it.solo }) track.solo else !track.mute

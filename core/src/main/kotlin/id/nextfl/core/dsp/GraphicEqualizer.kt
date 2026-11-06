@@ -12,9 +12,14 @@ class GraphicEqualizer(private val sampleRate: Int) {
     private val current = FloatArray(BANDS)
     private val target = FloatArray(BANDS)
     private val smoothing = (1 - exp(-SUB_BLOCK / (SMOOTH_SECONDS * sampleRate))).toFloat()
+    private var configured = false
 
+    // First call snaps, later glide
     fun configure(settings: GraphicEqSettings) {
         for (band in 0 until BANDS) target[band] = if (settings.enabled) settings.gains.getOrElse(band) { 0f } else 0f
+        if (configured) return
+        configured = true
+        for (band in 0 until BANDS) moveTo(band, target[band])
     }
 
     fun process(left: FloatArray, right: FloatArray, count: Int) {
@@ -31,12 +36,16 @@ class GraphicEqualizer(private val sampleRate: Int) {
         for (band in 0 until BANDS) {
             if (current[band] == target[band]) continue
             val next = current[band] + (target[band] - current[band]) * smoothing
-            current[band] = if (abs(target[band] - next) < SNAP_DB) target[band] else next
-            val wasActive = active[band]
-            active[band] = abs(current[band]) >= NEUTRAL_DB
-            if (active[band]) filters[band].set(design(band, current[band], sampleRate))
-            if (active[band] && !wasActive) filters[band].reset()
+            moveTo(band, if (abs(target[band] - next) < SNAP_DB) target[band] else next)
         }
+    }
+
+    private fun moveTo(band: Int, gainDb: Float) {
+        current[band] = gainDb
+        val wasActive = active[band]
+        active[band] = abs(gainDb) >= NEUTRAL_DB
+        if (active[band]) filters[band].set(design(band, gainDb, sampleRate))
+        if (active[band] && !wasActive) filters[band].reset()
     }
 
     companion object {

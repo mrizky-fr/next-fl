@@ -5,17 +5,42 @@ import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import kotlin.math.roundToInt
 
 private const val BYTES_PER_FRAME = 4
 private const val CHUNK_FRAMES = 4096
+private const val FULL_SCALE = 32768f
+private const val MAX_CODE = 32767
+private const val MIN_CODE = -32768
 
-private fun toPcm16(value: Float): Int = (value.coerceIn(-1f, 1f) * 32767f).roundToInt()
+/** Triangular dither, one LSB. */
+internal class TpdfDither {
+    private var state = SEED
+
+    fun next(): Float = uniform() - uniform()
+
+    // Xorshift32, allocation free
+    private fun uniform(): Float {
+        state = state xor (state shl XOR_A)
+        state = state xor (state ushr XOR_B)
+        state = state xor (state shl XOR_C)
+        return (state ushr MANTISSA_SHIFT) * UNIT
+    }
+
+    private companion object {
+        const val SEED = 0x2545F491
+        const val XOR_A = 13
+        const val XOR_B = 17
+        const val XOR_C = 5
+        const val MANTISSA_SHIFT = 8
+        const val UNIT = 1f / (1 shl 24)
+    }
+}
 
 /** Streams 16-bit stereo frames. */
-open class Pcm16StreamWriter(output: OutputStream) : StereoSink, Closeable {
+open class Pcm16StreamWriter(output: OutputStream, dither: Boolean = false) : StereoSink, Closeable {
     private val out = BufferedOutputStream(output, 1 shl 16)
     private val bytes = ByteArray(CHUNK_FRAMES * BYTES_PER_FRAME)
+    private val ditherer = if (dither) TpdfDither() else null
     var framesWritten = 0L
         private set
 
@@ -24,7 +49,7 @@ open class Pcm16StreamWriter(output: OutputStream) : StereoSink, Closeable {
         while (done < count) {
             val chunk = minOf(CHUNK_FRAMES, count - done)
             for (i in 0 until chunk) {
-                putFrame(i * BYTES_PER_FRAME, toPcm16(left[done + i]), toPcm16(right[done + i]))
+                putFrame(i * BYTES_PER_FRAME, quantize(left[done + i]), quantize(right[done + i]))
             }
             out.write(bytes, 0, chunk * BYTES_PER_FRAME)
             done += chunk
@@ -33,6 +58,12 @@ open class Pcm16StreamWriter(output: OutputStream) : StereoSink, Closeable {
     }
 
     protected fun writeRaw(data: ByteArray) = out.write(data)
+
+    // Mirrors decoder scale; NaN safe
+    private fun quantize(value: Float): Int {
+        val noise = if (value == 0f) 0f else ditherer?.next() ?: 0f
+        return Math.round(value * FULL_SCALE + noise).coerceIn(MIN_CODE, MAX_CODE)
+    }
 
     override fun close() = out.close()
 
@@ -44,11 +75,11 @@ open class Pcm16StreamWriter(output: OutputStream) : StereoSink, Closeable {
     }
 }
 
-class PcmFileWriter(file: File) : Pcm16StreamWriter(FileOutputStream(file))
+class PcmFileWriter(file: File, dither: Boolean = false) : Pcm16StreamWriter(FileOutputStream(file), dither)
 
 /** WAV with known length. */
 class WavWriter(output: OutputStream, private val sampleRate: Int, private val totalFrames: Long) :
-    Pcm16StreamWriter(output) {
+    Pcm16StreamWriter(output, dither = true) {
 
     init {
         writeRaw(header(sampleRate, totalFrames))

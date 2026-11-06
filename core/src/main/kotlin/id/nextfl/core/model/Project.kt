@@ -67,6 +67,19 @@ data class LevellerSettings(
     }
 }
 
+/** Defaults stay unity below 0 dBFS. */
+@Serializable
+data class CompressorSettings(
+    val enabled: Boolean = false,
+    val thresholdDb: Float = 0f,
+    val ratio: Float = 4f,
+    val attackMs: Float = 10f,
+    val releaseMs: Float = 120f,
+    val kneeDb: Float = 6f,
+    val makeupDb: Float = 0f,
+    val autoMakeup: Boolean = false,
+)
+
 /** Insert chain, top to bottom. */
 @Serializable
 data class FxChain(
@@ -75,6 +88,7 @@ data class FxChain(
     val reverb: ReverbSettings = ReverbSettings(),
     val graphicEq: GraphicEqSettings = GraphicEqSettings(),
     val leveller: LevellerSettings = LevellerSettings(),
+    val compressor: CompressorSettings = CompressorSettings(),
 )
 
 @Serializable
@@ -91,12 +105,19 @@ data class Track(
     val stereoizer: StereoizerSettings = StereoizerSettings(),
     val graphicEq: GraphicEqSettings = GraphicEqSettings(),
     val leveller: LevellerSettings = LevellerSettings(),
+    val compressor: CompressorSettings = CompressorSettings(),
 ) {
     // Flat fields keep old projects loading
-    val fx: FxChain get() = FxChain(eq, stereoizer, reverb, graphicEq, leveller)
+    val fx: FxChain get() = FxChain(eq, stereoizer, reverb, graphicEq, leveller, compressor)
 
-    fun withFx(chain: FxChain): Track =
-        copy(eq = chain.eq, stereoizer = chain.stereoizer, reverb = chain.reverb, graphicEq = chain.graphicEq, leveller = chain.leveller)
+    fun withFx(chain: FxChain): Track = copy(
+        eq = chain.eq,
+        stereoizer = chain.stereoizer,
+        reverb = chain.reverb,
+        graphicEq = chain.graphicEq,
+        leveller = chain.leveller,
+        compressor = chain.compressor,
+    )
 }
 
 /** Start in beats, source seconds. */

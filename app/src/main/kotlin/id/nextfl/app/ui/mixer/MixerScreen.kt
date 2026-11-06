@@ -176,6 +176,7 @@ private fun FxBadges(chain: FxChain) {
             FxBadge("REV", chain.reverb.enabled && chain.reverb.mix > 0f)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            FxBadge("CMP", chain.compressor.enabled)
             FxBadge("GEQ", chain.graphicEq.enabled && chain.graphicEq.gains.any { it != 0f })
             FxBadge("LV", chain.leveller.enabled && (chain.leveller.gainDb != 0f || chain.leveller.pan != 0f))
         }

@@ -58,7 +58,7 @@ class AudioDecoder(private val context: Context, private val targetRate: Int) {
         } catch (error: Exception) {
             target.delete()
             if (error is kotlinx.coroutines.CancellationException) throw error
-            throw AudioDecodeException("Format audio tidak didukung")
+            throw AudioDecodeException(if (isStorageFull(error)) "Penyimpanan penuh" else "Format audio tidak didukung")
         } finally {
             runCatching { codec?.stop() }
             runCatching { codec?.release() }
@@ -160,7 +160,11 @@ class AudioDecoder(private val context: Context, private val targetRate: Int) {
         }
     }
 
+    private fun isStorageFull(error: Exception): Boolean =
+        error is java.io.IOException && error.message.orEmpty().contains(NO_SPACE_ERRNO)
+
     private companion object {
+        const val NO_SPACE_ERRNO = "ENOSPC"
         const val TIMEOUT_US = 10_000L
         const val MAX_DURATION_US = 30L * 60 * 1_000_000
         const val CHUNK = 8192

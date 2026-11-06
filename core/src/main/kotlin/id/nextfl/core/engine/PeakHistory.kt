@@ -35,7 +35,7 @@ class PeakHistory(private val capacity: Int = DEFAULT_BLOCKS) {
     }
 
     private companion object {
-        // About 1.5 s at 1024
-        const val DEFAULT_BLOCKS = 64
+        // About 1.5 s at 512
+        const val DEFAULT_BLOCKS = 128
     }
 }

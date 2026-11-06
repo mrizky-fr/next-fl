@@ -41,11 +41,17 @@ class ProjectRepository(private val paths: StoragePaths, private val resolver: C
             json.decodeFromString(SavedProject.serializer(), file.readText())
         } catch (error: SerializationException) {
             android.util.Log.w(TAG, "Saved project unreadable, starting fresh", error)
-            null
+            keepBroken(file)
         } catch (error: IllegalArgumentException) {
             android.util.Log.w(TAG, "Saved project invalid, starting fresh", error)
-            null
+            keepBroken(file)
         }
+    }
+
+    // Autosave must not erase it
+    private fun keepBroken(file: File): SavedProject? {
+        runCatching { file.copyTo(File(file.path + BROKEN_SUFFIX), overwrite = true) }
+        return null
     }
 
     // Rename keeps file crash-safe
@@ -58,11 +64,22 @@ class ProjectRepository(private val paths: StoragePaths, private val resolver: C
         }
     }
 
+    // Old image kept until valid
     suspend fun importImage(kind: VisualImage, uri: Uri): Bitmap = withContext(Dispatchers.IO) {
         val target = paths.image(kind)
-        resolver.openInputStream(uri)?.use { input -> target.outputStream().use { input.copyTo(it) } }
-            ?: throw IOException("Gambar tidak bisa dibuka")
-        decodeImage(target) ?: throw IOException("Gambar tidak valid")
+        val temp = File(target.path + ".tmp")
+        try {
+            resolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } }
+                ?: throw IOException("Gambar tidak bisa dibuka")
+            val bitmap = decodeImage(temp) ?: throw IOException("Gambar tidak valid")
+            if (!temp.renameTo(target)) {
+                target.delete()
+                if (!temp.renameTo(target)) throw IOException("Gambar tidak bisa disimpan")
+            }
+            bitmap
+        } finally {
+            temp.delete()
+        }
     }
 
     suspend fun loadImage(kind: VisualImage): Bitmap? = withContext(Dispatchers.IO) {
@@ -77,12 +94,15 @@ class ProjectRepository(private val paths: StoragePaths, private val resolver: C
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             val scale = MAX_IMAGE_EDGE.toFloat() / max(info.size.width, info.size.height)
-            if (scale < 1f) decoder.setTargetSize((info.size.width * scale).toInt(), (info.size.height * scale).toInt())
+            if (scale < 1f) decoder.setTargetSize(scaled(info.size.width, scale), scaled(info.size.height, scale))
         }
     }.getOrNull()
+
+    private fun scaled(edge: Int, scale: Float): Int = (edge * scale).toInt().coerceAtLeast(1)
 
     private companion object {
         const val TAG = "ProjectRepository"
         const val MAX_IMAGE_EDGE = 2048
+        const val BROKEN_SUFFIX = ".broken"
     }
 }

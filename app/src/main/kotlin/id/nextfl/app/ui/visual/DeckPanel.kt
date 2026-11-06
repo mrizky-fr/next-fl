@@ -116,28 +116,41 @@ private fun JogWheel(vm: EditorViewModel, state: EditorState, clip: Clip?, playi
             Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures(onDoubleTap = { currentClip?.let { vm.setDeckRate(it.id, 1.0) } })
+                    detectTapGestures(onDoubleTap = { currentClip?.let { resetDeckRate(vm, it) } })
                 }
                 .pointerInput(Unit) {
                     var base = 1.0
                     var turned = 0.0
-                    detectDragGestures(
-                        onDragStart = {
-                            base = currentRate
-                            turned = 0.0
-                            vm.beginGesture()
-                        },
-                        onDragEnd = { vm.endGesture() },
-                        onDragCancel = { vm.endGesture() },
-                    ) { change, _ ->
-                        val center = Offset(size.width / 2f, size.height / 2f)
-                        val reach = hypot(change.position.x - center.x, change.position.y - center.y)
-                        if (reach < size.width * DEAD_ZONE) return@detectDragGestures
-                        val delta = wrapDegrees(angleOf(change.position, center) - angleOf(change.previousPosition, center))
-                        turned += delta
-                        spin.floatValue += delta.toFloat()
-                        change.consume()
-                        currentClip?.let { vm.setDeckRate(it.id, base + turned * RATE_PER_DEGREE) }
+                    var dragging = false
+                    // Closes undo step if removed
+                    try {
+                        detectDragGestures(
+                            onDragStart = {
+                                base = currentRate
+                                turned = 0.0
+                                dragging = true
+                                vm.beginGesture()
+                            },
+                            onDragEnd = {
+                                dragging = false
+                                vm.endGesture()
+                            },
+                            onDragCancel = {
+                                dragging = false
+                                vm.endGesture()
+                            },
+                        ) { change, _ ->
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val reach = hypot(change.position.x - center.x, change.position.y - center.y)
+                            if (reach < size.width * DEAD_ZONE) return@detectDragGestures
+                            val delta = wrapDegrees(angleOf(change.position, center) - angleOf(change.previousPosition, center))
+                            turned += delta
+                            spin.floatValue += delta.toFloat()
+                            change.consume()
+                            currentClip?.let { vm.setDeckRate(it.id, base + turned * RATE_PER_DEGREE) }
+                        }
+                    } finally {
+                        if (dragging) vm.endGesture()
                     }
                 },
         ) {
@@ -163,6 +176,13 @@ private fun JogWheel(vm: EditorViewModel, state: EditorState, clip: Clip?, playi
             Text(String.format(Locale.ROOT, "%+.1f%%", (rate - 1) * 100), style = TextStyles.LcdSmall, color = Palette.White)
         }
     }
+}
+
+// Reset is its own undo step
+private fun resetDeckRate(vm: EditorViewModel, clip: Clip) {
+    vm.beginGesture()
+    vm.setDeckRate(clip.id, 1.0)
+    vm.endGesture()
 }
 
 @Composable

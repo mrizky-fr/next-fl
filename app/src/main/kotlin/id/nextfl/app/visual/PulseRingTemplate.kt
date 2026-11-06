@@ -126,6 +126,8 @@ class PulseRingTemplate(typeface: Typeface) {
     private var zoom = 1f
     private var kick = 0f
     private val drawScene: (Canvas) -> Unit = { scene(it) }
+    private var titleSource = ""
+    private var titleUpper = ""
 
     fun setImages(background: Bitmap?, logoImage: Bitmap?) {
         backgroundImage = background
@@ -190,24 +192,30 @@ class PulseRingTemplate(typeface: Typeface) {
 
     // Icons then username, centered row
     private fun drawSocial(canvas: Canvas, x: Float, y: Float) {
-        val platforms = SocialPlatform.entries.filter { it in settings.socialPlatforms }
+        val chosen = settings.socialPlatforms
+        val platforms = SocialPlatform.entries
+        var iconCount = 0
+        for (index in platforms.indices) if (platforms[index] in chosen) iconCount++
         val name = settings.socialUsername.trim()
-        if (platforms.isEmpty() && name.isEmpty()) return
+        if (iconCount == 0 && name.isEmpty()) return
         val size = (unit * SOCIAL_ICON).roundToInt().coerceAtLeast(MIN_ICON_PX)
         val gap = unit * SOCIAL_GAP
         handle.textSize = unit * HANDLE_SIZE
         handle.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb(160, 0, 0, 0))
-        val nameGap = if (platforms.isNotEmpty() && name.isNotEmpty()) gap * 1.6f else 0f
+        val nameGap = if (iconCount > 0 && name.isNotEmpty()) gap * 1.6f else 0f
         val nameWidth = if (name.isEmpty()) 0f else handle.measureText(name)
-        val iconsWidth = platforms.size * size + max(0, platforms.size - 1) * gap
+        val iconsWidth = iconCount * size + max(0, iconCount - 1) * gap
         var left = x - (iconsWidth + nameGap + nameWidth) / 2
-        for (platform in platforms) {
+        // Indexed loop avoids per-frame allocation
+        for (index in platforms.indices) {
+            val platform = platforms[index]
+            if (platform !in chosen) continue
             val bitmap = socialIcons.bitmap(platform, size)
             canvas.drawBitmap(bitmap, left + (size - bitmap.width) / 2f, y - bitmap.height / 2f, iconPaint)
             left += size + gap
         }
         if (name.isNotEmpty()) {
-            val start = if (platforms.isEmpty()) left else left - gap + nameGap
+            val start = if (iconCount == 0) left else left - gap + nameGap
             canvas.drawText(name, start, y + handle.textSize * 0.36f, handle)
         }
     }
@@ -226,7 +234,11 @@ class PulseRingTemplate(typeface: Typeface) {
         if (text.isBlank()) return
         title.textSize = unit * TITLE_SIZE
         title.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb(160, 0, 0, 0))
-        canvas.drawText(text.uppercase(), x, y, title)
+        if (text != titleSource) {
+            titleSource = text
+            titleUpper = text.uppercase()
+        }
+        canvas.drawText(titleUpper, x, y, title)
     }
 
     private companion object {

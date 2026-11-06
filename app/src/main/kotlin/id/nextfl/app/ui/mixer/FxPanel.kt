@@ -44,6 +44,7 @@ import id.nextfl.app.ui.components.PANEL_GAP
 import id.nextfl.app.ui.components.PANEL_PADDING
 import id.nextfl.app.ui.components.PanelHeader
 import id.nextfl.app.ui.components.SegmentedControl
+import id.nextfl.app.ui.components.ToggleRow
 import id.nextfl.app.ui.components.ValueSlider
 import id.nextfl.app.ui.components.VerticalSlider
 import id.nextfl.app.ui.components.meterRatio
@@ -51,8 +52,10 @@ import id.nextfl.app.ui.playlist.TrackEditDialog
 import id.nextfl.app.ui.theme.Dimens
 import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
+import id.nextfl.core.dsp.Compressor
 import id.nextfl.core.dsp.Equalizer
 import id.nextfl.core.dsp.Stereoizer
+import id.nextfl.core.model.CompressorSettings
 import id.nextfl.core.model.EqSettings
 import id.nextfl.core.model.FxChain
 import id.nextfl.core.model.FxPresets
@@ -75,9 +78,14 @@ private const val GRAPH_POINTS = 96
 private val PANEL_WIDTH = 380.dp
 private val GRAPHIC_SLIDER_HEIGHT = 120.dp
 private val GRAPHIC_SLIDER_WIDTH = 28.dp
+private val COMP_GRAPH_HEIGHT = 72.dp
+private const val COMP_GRAPH_FLOOR_DB = -60f
+private const val RATIO_WHOLE_FROM = 10f
+private const val MS_WHOLE_FROM = 10f
 private val METER_LABELS = listOf(-48f to "-∞", -36f to "-36", -24f to "-24", -12f to "-12", -6f to "-6", 0f to "0", 3f to "+3")
 
 private val EQ_SPEC = ModuleSpec<EqSettings>("Parametric EQ", FxPresets.eq, { it.enabled }, { s, on -> s.copy(enabled = on) })
+private val COMP_SPEC = ModuleSpec<CompressorSettings>("Compressor", FxPresets.compressor, { it.enabled }, { s, on -> s.copy(enabled = on) })
 private val STEREOIZER_SPEC = ModuleSpec<StereoizerSettings>("Stereoizer", FxPresets.stereoizer, { it.enabled }, { s, on -> s.copy(enabled = on) })
 private val REVERB_SPEC = ModuleSpec<ReverbSettings>("Reverb", FxPresets.reverb, { it.enabled }, { s, on -> s.copy(enabled = on) })
 private val GRAPHIC_SPEC = ModuleSpec<GraphicEqSettings>("Graphic EQ", FxPresets.graphicEq, { it.enabled }, { s, on -> s.copy(enabled = on) })
@@ -111,6 +119,9 @@ fun FxPanel(vm: EditorViewModel, doc: ProjectDoc, target: FxTarget) {
         FxModule(EQ_SPEC, chain.eq, clipboard as? EqSettings, vm::copyFx, { key, t -> update(key?.let { "eq:$it" }) { it.copy(eq = t(it.eq)) } }) { on ->
             EqControls(chain.eq, on) { key, t -> update("eq:$key") { it.copy(eq = t(it.eq)) } }
         }
+        FxModule(COMP_SPEC, chain.compressor, clipboard as? CompressorSettings, vm::copyFx, { key, t -> update(key?.let { "cmp:$it" }) { it.copy(compressor = t(it.compressor)) } }) { on ->
+            CompressorControls(chain.compressor, on) { key, t -> update("cmp:$key") { it.copy(compressor = t(it.compressor)) } }
+        }
         FxModule(STEREOIZER_SPEC, chain.stereoizer, clipboard as? StereoizerSettings, vm::copyFx, { key, t -> update(key?.let { "st:$it" }) { it.copy(stereoizer = t(it.stereoizer)) } }) { on ->
             StereoizerControls(chain.stereoizer, on) { key, t -> update("st:$key") { it.copy(stereoizer = t(it.stereoizer)) } }
         }
@@ -140,6 +151,44 @@ private fun EqControls(eq: EqSettings, on: Boolean, set: FieldSetter<EqSettings>
         Knob("Freq", eq.midFreq, FxRanges.EQ_MID_FREQ, 1000f, { v -> set("midFreq") { it.copy(midFreq = v) } }, ::formatHz, scale = KnobScale.LOG, enabled = on)
         Knob("High", eq.highGain, FxRanges.EQ_GAIN, 0f, { v -> set("highGain") { it.copy(highGain = v) } }, ::formatGain, bipolar = true, enabled = on)
         Knob("Hi cut", eq.highCut, FxRanges.EQ_HIGH_CUT, 20_000f, { v -> set("highCut") { it.copy(highCut = v) } }, ::formatHz, scale = KnobScale.LOG, enabled = on)
+    }
+}
+
+@Composable
+private fun CompressorControls(comp: CompressorSettings, on: Boolean, set: FieldSetter<CompressorSettings>) {
+    val defaults = CompressorSettings()
+    CompressorGraph(comp)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Knob("Threshold", comp.thresholdDb, FxRanges.COMP_THRESHOLD, defaults.thresholdDb, { v -> set("threshold") { it.copy(thresholdDb = v) } }, ::formatDecibels, enabled = on)
+        Knob("Ratio", comp.ratio, FxRanges.COMP_RATIO, defaults.ratio, { v -> set("ratio") { it.copy(ratio = v) } }, ::formatRatio, scale = KnobScale.LOG, enabled = on)
+        Knob("Attack", comp.attackMs, FxRanges.COMP_ATTACK_MS, defaults.attackMs, { v -> set("attack") { it.copy(attackMs = v) } }, ::formatMs, scale = KnobScale.LOG, enabled = on)
+        Knob("Release", comp.releaseMs, FxRanges.COMP_RELEASE_MS, defaults.releaseMs, { v -> set("release") { it.copy(releaseMs = v) } }, ::formatMs, scale = KnobScale.LOG, enabled = on)
+        Knob("Knee", comp.kneeDb, FxRanges.COMP_KNEE, defaults.kneeDb, { v -> set("knee") { it.copy(kneeDb = v) } }, ::formatDecibels, enabled = on)
+        Knob("Gain", comp.makeupDb, FxRanges.COMP_MAKEUP, defaults.makeupDb, { v -> set("makeup") { it.copy(makeupDb = v) } }, ::formatGain, enabled = on)
+    }
+    ToggleRow("Gain otomatis", comp.autoMakeup, { v -> set("auto") { it.copy(autoMakeup = v) } }, enabled = on)
+}
+
+// Input to output level
+@Composable
+private fun CompressorGraph(comp: CompressorSettings) {
+    val curve = remember(comp) {
+        FloatArray(GRAPH_POINTS) { index ->
+            val inputDb = COMP_GRAPH_FLOOR_DB * (1f - index.toFloat() / (GRAPH_POINTS - 1))
+            Compressor.outputDb(comp, inputDb)
+        }
+    }
+    Canvas(Modifier.fillMaxWidth().height(COMP_GRAPH_HEIGHT).clip(RoundedCornerShape(Dimens.Radius)).background(Palette.Well)) {
+        fun yOf(db: Float) = db.coerceIn(COMP_GRAPH_FLOOR_DB, 0f) / COMP_GRAPH_FLOOR_DB * size.height
+        val thresholdX = (1f - comp.thresholdDb / COMP_GRAPH_FLOOR_DB) * size.width
+        drawLine(Palette.Line, Offset(0f, size.height), Offset(size.width, 0f), 1f)
+        drawLine(Palette.ControlHigh, Offset(thresholdX, 0f), Offset(thresholdX, size.height), 1f)
+        val line = Path()
+        curve.forEachIndexed { index, db ->
+            val x = index.toFloat() / (GRAPH_POINTS - 1) * size.width
+            if (index == 0) line.moveTo(x, yOf(db)) else line.lineTo(x, yOf(db))
+        }
+        drawPath(line, Palette.Accent, style = Stroke(2.dp.toPx()))
     }
 }
 
@@ -262,6 +311,12 @@ private fun formatAmount(value: Float): String = "${(value * 100).roundToInt()}"
 private fun formatPercent(value: Float): String = "${(value * 100).roundToInt()}%"
 
 private fun formatLevel(db: Float): String = "%+.1f dB".format(db)
+
+private fun formatDecibels(db: Float): String = "%.1f dB".format(db)
+
+private fun formatRatio(ratio: Float): String = if (ratio >= RATIO_WHOLE_FROM) "${ratio.roundToInt()}:1" else "%.1f:1".format(ratio)
+
+private fun formatMs(ms: Float): String = if (ms >= MS_WHOLE_FROM) "${ms.roundToInt()} ms" else "%.1f ms".format(ms)
 
 // Positive delays right channel
 private fun formatHaas(value: Float): String {

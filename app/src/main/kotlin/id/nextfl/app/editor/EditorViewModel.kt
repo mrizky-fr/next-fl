@@ -95,6 +95,7 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     // View state
     fun updateUi(transform: (UiState) -> UiState) = mutableUi.update(transform)
     fun dismissToast(id: Long) = app.messages.dismiss(id)
+    fun showError(message: String) = app.messages.toast(message, ToastTone.ERROR)
 
     // History
     fun undo() = store.undo()
@@ -199,7 +200,12 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
             app.messages.busy("Mendeteksi tempo $name", DECODE_SHARE)
             val loaded = withContext(Dispatchers.Default) {
                 val source = MappedPcmSource(app.paths.asset(assetId), AppContainer.SAMPLE_RATE)
-                LoadedAsset(source, decoded.peaks) to BpmDetector.detect(source)
+                try {
+                    LoadedAsset(source, decoded.peaks) to BpmDetector.detect(source)
+                } catch (error: Exception) {
+                    source.close()
+                    throw error
+                }
             }
             app.library.register(assetId, loaded.first)
             val asset = AudioAsset(assetId, name, loaded.first.source.durationSeconds, loaded.second)
@@ -208,7 +214,18 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
             app.messages.toast(asset.bpm?.let { "$name · ${formatBpm(it)} BPM terdeteksi" } ?: "$name ditambahkan", ToastTone.SUCCESS)
         } catch (error: AudioDecodeException) {
             app.messages.toast("$name: ${error.message}", ToastTone.ERROR)
+        } catch (cancelled: CancellationException) {
+            discardUnregistered(assetId)
+            throw cancelled
+        } catch (error: Exception) {
+            android.util.Log.e(TAG, "Import failed", error)
+            discardUnregistered(assetId)
+            app.messages.toast("$name gagal diimpor, file terlalu besar atau rusak", ToastTone.ERROR)
         }
+    }
+
+    private fun discardUnregistered(assetId: String) {
+        if (!app.library.isLoaded(assetId)) app.paths.asset(assetId).delete()
     }
 
     fun placeAsset(assetId: String) {
@@ -323,11 +340,18 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
             } catch (error: Exception) {
                 target?.let(app.exporter::discard)
                 android.util.Log.e(TAG, "Export failed", error)
-                app.messages.toast("Export gagal: ${error.message ?: "tidak diketahui"}", ToastTone.ERROR)
+                app.messages.toast(exportFailure(error), ToastTone.ERROR)
             } finally {
                 app.messages.idle()
             }
         }
+    }
+
+    // Storage-full gets plain Indonesian
+    private fun exportFailure(error: Exception): String {
+        val message = error.message.orEmpty()
+        val full = message.contains(NO_SPACE_ERRNO) || message.contains(NO_SPACE_TEXT, ignoreCase = true)
+        return if (full) "Export gagal: penyimpanan penuh" else "Export gagal: ${message.ifEmpty { "tidak diketahui" }}"
     }
 
     private fun exportBusy(message: String, progress: Float?) = app.messages.busy(message, progress, ::cancelExport)
@@ -338,6 +362,7 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     // Project
     fun newProject() {
+        cancelExport()
         app.playback.stop()
         app.library.clear()
         store.reset()
@@ -352,9 +377,14 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     fun setImage(kind: VisualImage, uri: Uri) {
         viewModelScope.launch {
-            runCatching { app.repository.importImage(kind, uri) }
-                .onSuccess { app.visuals.image(kind).value = it }
-                .onFailure { app.messages.toast("Gambar tidak bisa dibaca", ToastTone.ERROR) }
+            try {
+                app.visuals.image(kind).value = app.repository.importImage(kind, uri)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                android.util.Log.e(TAG, "Image import failed", error)
+                app.messages.toast("Gambar tidak bisa dibaca", ToastTone.ERROR)
+            }
         }
     }
 
@@ -366,9 +396,11 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     fun onAppBackgrounded() = app.session.flush()
 
     private fun displayName(context: Context, uri: Uri): String {
-        val name = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        }
+        val name = runCatching {
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        }.getOrNull()
         return (name ?: "Audio").substringBeforeLast('.').take(MAX_NAME)
     }
 
@@ -376,6 +408,8 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     companion object {
         private const val TAG = "EditorViewModel"
+        private const val NO_SPACE_ERRNO = "ENOSPC"
+        private const val NO_SPACE_TEXT = "No space"
         private const val AUDIO_SHARE = 0.1f
         private const val NORMALIZE_HEADROOM_DB = 0.3f
         private const val MAX_CLIP_GAIN_DB = 24f

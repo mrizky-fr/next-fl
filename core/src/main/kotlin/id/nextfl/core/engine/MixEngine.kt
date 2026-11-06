@@ -23,15 +23,18 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
 
     private var outputFrame = 0L
     private val processors = ConcurrentHashMap<String, TrackProcessor>()
+    private val trackSlots = ArrayList<TrackProcessor>()
+    private var voiceTargets = arrayOfNulls<TrackProcessor>(0)
+    private var voiceStates = arrayOfNulls<GrainReader.State>(0)
+    private var syncedGraph: RenderGraph? = null
     private val masterL = FloatArray(maxBlock)
     private val masterR = FloatArray(maxBlock)
     private val limiter = Limiter(sampleRate)
-    private val masterChain = FxChainProcessor(sampleRate)
-    private val djEffects = DjEffects(sampleRate)
+    private var masterChain = FxChainProcessor(sampleRate)
+    private var djEffects = DjEffects(sampleRate)
     private val masterHistory = PeakHistory()
     private val grains = GrainReader(sampleRate)
     private val grainStates = HashMap<String, GrainReader.State>()
-    private var grainGraph: RenderGraph? = null
     private var masterGain = 1f
     val tap = MasterTap()
 
@@ -107,8 +110,8 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         require(frames <= maxBlock) { "Block too large" }
         applySeek()
         val current = graph
-        syncProcessors(current)
-        processors.values.forEach { it.clear(frames) }
+        if (syncedGraph !== current) syncGraph(current)
+        for (index in 0 until trackSlots.size) trackSlots[index].clear(frames)
         mixVoices(current, frames)
         mixTracks(current, frames)
         if (copy) {
@@ -116,7 +119,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
             masterR.copyInto(right, 0, 0, frames)
         }
         tap.write(masterL, masterR, frames, outputFrame)
-        processors.values.forEach { it.history.write(outputFrame, frames, it.peak) }
+        for (index in 0 until trackSlots.size) {
+            val processor = trackSlots[index]
+            processor.history.write(outputFrame, frames, processor.peak)
+        }
         masterHistory.write(outputFrame, frames, masterPeak)
         songFrame += frames
         outputFrame += frames
@@ -134,30 +140,39 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         segments = (segments + longArrayOf(outputFrame, frame)).takeLast(MAX_SEGMENTS * 2).toLongArray()
     }
 
-    private fun syncProcessors(current: RenderGraph) {
+    // Allocates only on graph swap
+    private fun syncGraph(current: RenderGraph) {
         val ids = current.tracks.mapTo(HashSet()) { it.id }
         processors.keys.retainAll(ids)
-        for (id in ids) processors.getOrPut(id) { TrackProcessor(sampleRate, maxBlock) }
+        trackSlots.clear()
+        for (params in current.tracks) trackSlots.add(processors.getOrPut(params.id) { TrackProcessor(sampleRate, maxBlock) })
+        val voices = current.voices
+        grainStates.keys.retainAll(voices.mapTo(HashSet()) { it.id })
+        voiceTargets = Array(voices.size) { processors[voices[it].trackId] }
+        voiceStates = Array(voices.size) { grainState(voices[it]) }
+        syncedGraph = current
     }
 
+    private fun grainState(voice: ClipVoice): GrainReader.State? =
+        if (voice.granular) grainStates.getOrPut(voice.id) { GrainReader.State() } else null
+
     private fun mixVoices(current: RenderGraph, frames: Int) {
-        if (grainGraph !== current) {
-            grainGraph = current
-            grainStates.keys.retainAll(current.voices.mapTo(HashSet()) { it.id })
-        }
         val blockStart = songFrame
         val blockEnd = blockStart + frames
-        for (voice in current.voices) {
+        val voices = current.voices
+        for (index in 0 until voices.size) {
+            val voice = voices[index]
             if (voice.endFrame <= blockStart || voice.startFrame >= blockEnd) continue
-            val target = processors[voice.trackId] ?: continue
+            val target = voiceTargets[index] ?: continue
+            val state = voiceStates[index]
             val from = max(0L, voice.startFrame - blockStart).toInt()
             val to = min(frames.toLong(), voice.endFrame - blockStart).toInt()
             for (i in from until to) {
                 val local = blockStart + i - voice.startFrame
                 val gain = voice.envelope.valueAt(local.toDouble() / sampleRate).toFloat()
                 if (gain == 0f) continue
-                if (voice.granular) {
-                    grains.sample(voice, grainStates.getOrPut(voice.id) { GrainReader.State() }, local)
+                if (state != null) {
+                    grains.sample(voice, state, local)
                     target.left[i] += grains.left * gain
                     target.right[i] += grains.right * gain
                     continue
@@ -172,9 +187,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private fun mixTracks(current: RenderGraph, frames: Int) {
         masterL.fill(0f, 0, frames)
         masterR.fill(0f, 0, frames)
-        for (params in current.tracks) {
-            val processor = processors[params.id] ?: continue
-            processor.process(params, frames)
+        val tracks = current.tracks
+        for (index in 0 until tracks.size) {
+            val processor = trackSlots[index]
+            processor.process(tracks[index], frames)
             for (i in 0 until frames) {
                 masterL[i] += processor.left[i]
                 masterR[i] += processor.right[i]
@@ -182,8 +198,8 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         }
         masterChain.process(current.masterFx, masterL, masterR, frames)
         djEffects.process(current.dj, current.bpm, masterL, masterR, frames)
+        if (!masterIsFinite(frames)) recoverMaster(frames)
         val step = (current.masterGain - masterGain) / frames
-        var peak = 0f
         for (i in 0 until frames) {
             masterGain += step
             masterL[i] *= masterGain
@@ -191,8 +207,23 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         }
         masterGain = current.masterGain
         limiter.process(masterL, masterR, frames)
+        var peak = 0f
         for (i in 0 until frames) peak = max(peak, max(abs(masterL[i]), abs(masterR[i])))
         masterPeak = peak
+    }
+
+    private fun masterIsFinite(frames: Int): Boolean {
+        var sum = 0f
+        for (i in 0 until frames) sum += abs(masterL[i]) + abs(masterR[i])
+        return sum.isFinite()
+    }
+
+    // NaN poisoned FX: start fresh
+    private fun recoverMaster(frames: Int) {
+        masterL.fill(0f, 0, frames)
+        masterR.fill(0f, 0, frames)
+        masterChain = FxChainProcessor(sampleRate)
+        djEffects = DjEffects(sampleRate)
     }
 
     companion object {

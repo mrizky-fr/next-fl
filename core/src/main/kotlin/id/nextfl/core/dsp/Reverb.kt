@@ -24,6 +24,8 @@ private class Allpass(size: Int, var gain: Float) {
         if (++index == buffer.size) index = 0
         return delayed - written * gain
     }
+
+    fun clear() = buffer.fill(0f)
 }
 
 /** Delay line with fractional reads. */
@@ -45,18 +47,21 @@ private class DelayLine(capacity: Int) {
         buffer[writeIndex] = if (abs(value) < DENORMAL) 0f else value
         if (++writeIndex == buffer.size) writeIndex = 0
     }
+
+    fun clear() = buffer.fill(0f)
 }
 
 /** FDN reverb, early reflections, room size. */
 class Reverb(private val sampleRate: Int) {
     private val scale = sampleRate / 44_100.0
-    private val diffusers = DIFFUSER_LENGTHS.indices.map { Allpass(scaled(DIFFUSER_LENGTHS[it]), DIFFUSER_GAINS[it]) }
+    private val diffusers = Array(DIFFUSER_LENGTHS.size) { Allpass(scaled(DIFFUSER_LENGTHS[it]), DIFFUSER_GAINS[it]) }
     private val baseLengths = FloatArray(LINES) { scaled(LINE_LENGTHS[it]).toFloat() }
     private val lengths = baseLengths.copyOf()
     private val targetLengths = baseLengths.copyOf()
     private val lines = Array(LINES) { DelayLine((baseLengths[it] * MAX_ROOM_SCALE).toInt() + MOD_DEPTH * 2 + 4) }
     private val early = DelayLine((EARLY_TAP_SECONDS.max() * MAX_ROOM_SCALE * sampleRate).toInt() + 4)
     private val earlyTaps = FloatArray(EARLY_TAP_SECONDS.size)
+    private val earlyTargets = FloatArray(EARLY_TAP_SECONDS.size)
     private val lengthGlide = (1 - exp(-1.0 / (ROOM_GLIDE_SECONDS * sampleRate))).toFloat()
     private val outputs = FloatArray(LINES)
     private val damped = FloatArray(LINES)
@@ -65,11 +70,12 @@ class Reverb(private val sampleRate: Int) {
     private val lfoSin = FloatArray(LINES) { sin(it * 0.9).toFloat() }
     private val lfoStepCos = FloatArray(LINES) { cos(lfoIncrement(it)).toFloat() }
     private val lfoStepSin = FloatArray(LINES) { sin(lfoIncrement(it)).toFloat() }
-    private val preDelay = FloatArray((sampleRate * MAX_PRE_DELAY).toInt() + 1)
+    private val maxPreDelayFrames = (sampleRate * MAX_PRE_DELAY).toFloat()
+    private val preDelayLine = DelayLine(maxPreDelayFrames.toInt() + PRE_DELAY_GUARD)
     private var lowCutCoefficient = (1 - exp(-2 * PI * DEFAULT_LOW_CUT_HZ / sampleRate)).toFloat()
     private val gainSmoothing = (1 - exp(-1.0 / (GAIN_SMOOTH_SECONDS * sampleRate))).toFloat()
-    private var preDelayIndex = 0
-    private var preDelayFrames = 0
+    private var preDelayTarget = 0f
+    private var preDelayCurrent = 0f
     private var lowCutState = 0f
     private var damping = 0.3f
     private var toneCoefficient = 0f
@@ -82,6 +88,7 @@ class Reverb(private val sampleRate: Int) {
     private var dry = 1f
     private var wet = 0f
     private var sampleCounter = 0
+    private var dirty = false
     private var current: ReverbSettings? = null
 
     fun configure(settings: ReverbSettings) {
@@ -94,9 +101,9 @@ class Reverb(private val sampleRate: Int) {
             if (first) lengths[k] = targetLengths[k]
             feedback[k] = lineFeedback(targetLengths[k] / sampleRate, settings.decay.toDouble())
         }
-        for (i in earlyTaps.indices) earlyTaps[i] = (EARLY_TAP_SECONDS[i] * room * sampleRate).toFloat()
+        for (i in earlyTargets.indices) earlyTargets[i] = (EARLY_TAP_SECONDS[i] * room * sampleRate).toFloat()
         damping = settings.damping * MAX_DAMPING
-        preDelayFrames = (settings.preDelay * sampleRate).roundToInt().coerceIn(0, preDelay.size - 1)
+        preDelayTarget = (settings.preDelay * sampleRate).coerceIn(0f, maxPreDelayFrames)
         toneCoefficient = exp(-2 * PI * settings.tone / sampleRate).toFloat()
         lowCutCoefficient = (1 - exp(-2 * PI * settings.lowCut / sampleRate)).toFloat()
         val diffusion = settings.diffusion / DEFAULT_DIFFUSION
@@ -109,12 +116,23 @@ class Reverb(private val sampleRate: Int) {
         val wetTrim = AudioMath.dbToGain(settings.wetDb)
         dryTarget = cos(mix * PI / 2).toFloat() * dryTrim
         wetTarget = sin(mix * PI / 2).toFloat() * wetTrim
+        if (first) {
+            dry = dryTarget
+            wet = wetTarget
+            preDelayCurrent = preDelayTarget
+            earlyTargets.copyInto(earlyTaps)
+        }
     }
 
-    val isActive: Boolean get() = wetTarget > 0f || wet > SILENT_GAIN
+    // Dry trim counts at zero mix
+    val isActive: Boolean get() = wetTarget > 0f || wet > SILENT_GAIN || dryTarget != 1f || abs(dry - 1f) > SILENT_GAIN
 
     fun process(left: FloatArray, right: FloatArray, count: Int) {
-        if (!isActive) return
+        if (!isActive) {
+            if (dirty) clear()
+            return
+        }
+        dirty = true
         for (i in 0 until count) {
             val source = lowCut(delayed((left[i] + right[i]) * 0.5f))
             early.write(source)
@@ -135,6 +153,20 @@ class Reverb(private val sampleRate: Int) {
         }
     }
 
+    // Re-enable starts without stale tail
+    private fun clear() {
+        dirty = false
+        for (line in lines) line.clear()
+        for (allpass in diffusers) allpass.clear()
+        early.clear()
+        preDelayLine.clear()
+        damped.fill(0f)
+        outputs.fill(0f)
+        lowCutState = 0f
+        toneL = 0f
+        toneR = 0f
+    }
+
     // Odd taps left, even right
     private fun earlyLeft(): Float {
         var sum = 0f
@@ -150,6 +182,7 @@ class Reverb(private val sampleRate: Int) {
 
     private fun glideRoom() {
         for (k in 0 until LINES) lengths[k] += (targetLengths[k] - lengths[k]) * lengthGlide
+        for (i in earlyTaps.indices) earlyTaps[i] += (earlyTargets[i] - earlyTaps[i]) * lengthGlide
     }
 
     private fun diffuse(input: Float): Float {
@@ -200,12 +233,9 @@ class Reverb(private val sampleRate: Int) {
     }
 
     private fun delayed(input: Float): Float {
-        if (preDelayFrames == 0) return input
-        val readIndex = (preDelayIndex - preDelayFrames + preDelay.size) % preDelay.size
-        val output = preDelay[readIndex]
-        preDelay[preDelayIndex] = input
-        preDelayIndex = (preDelayIndex + 1) % preDelay.size
-        return output
+        preDelayLine.write(input)
+        preDelayCurrent += (preDelayTarget - preDelayCurrent) * lengthGlide
+        return preDelayLine.read(preDelayCurrent + 1f)
     }
 
     private fun scaled(samples: Int) = (samples * scale).roundToInt().coerceAtLeast(1)
@@ -225,6 +255,7 @@ class Reverb(private val sampleRate: Int) {
         private const val LFO_SPREAD_HZ = 0.083
         private const val RENORMALIZE_EVERY = 4096
         private const val MAX_PRE_DELAY = 0.25
+        private const val PRE_DELAY_GUARD = 4
         private const val DEFAULT_LOW_CUT_HZ = 140.0
         private const val MAX_DAMPING = 0.7f
         private const val DEFAULT_DIFFUSION = 0.7f

@@ -39,13 +39,16 @@ class ProjectStore(
         mutableState.value = pruned(before.copy(history = history))
     }
 
+    // Gestures never merge with neighbors
     fun beginGesture() {
         gestureStart = current.doc
+        lastCoalesceKey = null
     }
 
     fun endGesture() {
         val start = gestureStart ?: return
         gestureStart = null
+        lastCoalesceKey = null
         val state = current
         if (start == state.doc) return
         mutableState.value = state.copy(history = state.history.copy(present = start).record(state.doc))
@@ -71,7 +74,9 @@ class ProjectStore(
 
     fun removeAsset(assetId: String) = mutableState.update { it.copy(assets = it.assets - assetId) }
 
+    // Open gesture must not resurrect
     fun load(doc: ProjectDoc, assets: AssetMap) {
+        gestureStart = null
         mutableState.value = fresh(doc, assets)
     }
 

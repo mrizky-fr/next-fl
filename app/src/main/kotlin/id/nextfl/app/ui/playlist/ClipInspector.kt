@@ -100,7 +100,7 @@ internal fun TempoSection(vm: EditorViewModel, clip: Clip, asset: AudioAsset?, r
         if (!clip.syncTempo) {
             ValueSlider("Speed", clip.speed.toFloat(), 0.5f..2f, { v ->
                 vm.updateClip(clip.id, "speed:${clip.id}") { it.copy(speed = Math.round(v * 100) / 100.0) }
-            }, { "×%.2f".format(it) }, origin = 1f)
+            }, { String.format(Locale.ROOT, "×%.2f", it) }, origin = 1f)
         }
         ToggleRow(
             label = "Kunci nada",
@@ -140,7 +140,7 @@ private fun AssetBpmDialog(asset: AudioAsset, onSave: (Double?) -> Unit, onDismi
 
 fun formatDb(db: Float): String = when {
     db <= -60f -> "-∞"
-    else -> "%+.1f dB".format(db)
+    else -> String.format(Locale.ROOT, "%+.1f dB", db)
 }
 
 fun formatSemitones(semitones: Float): String {
@@ -148,4 +148,4 @@ fun formatSemitones(semitones: Float): String {
     return if (steps == 0) "0 st" else String.format(Locale.ROOT, "%+d st", steps)
 }
 
-fun formatSeconds(seconds: Float): String = if (seconds < 1f) "${(seconds * 1000).toInt()} ms" else "%.2f s".format(seconds)
+fun formatSeconds(seconds: Float): String = if (seconds < 1f) "${(seconds * 1000).toInt()} ms" else String.format(Locale.ROOT, "%.2f s", seconds)

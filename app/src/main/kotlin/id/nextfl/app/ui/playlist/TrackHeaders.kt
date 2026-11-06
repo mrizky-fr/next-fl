@@ -1,6 +1,23 @@
 package id.nextfl.app.ui.playlist
 
 import kotlin.math.log10
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.round
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import id.nextfl.app.editor.TimelineViewport
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.zIndex
+import id.nextfl.core.edit.TrackOps
 import id.nextfl.app.ui.components.rememberFrameTick
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.foundation.Canvas
@@ -66,14 +83,23 @@ import kotlin.math.roundToInt
 
 private const val ROW_DP = 64
 private const val ROW_GAP_DP = 1
+private const val DRAG_Z = 1f
+private const val SINGLE_LANE_ROWS = 1.5f
+private const val FLICK_VELOCITY = 600f
 private const val HEADER_TOGGLE_SCALE = 0.5f
 private const val LABEL_BOOST = 1.4f
 private val TOGGLE_TOUCH_PAD = 4.dp
+
+/** Long-press drag of one header. */
+private data class TrackReorder(val trackId: String, val fromIndex: Int, val offset: Float = 0f, val travel: Float = 0f)
 
 @Composable
 fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: String?, geometry: TimelineGeometry, playing: Boolean) {
     var editing by remember { mutableStateOf<Track?>(null) }
     var listHeight by remember { mutableFloatStateOf(0f) }
+    var reorder by remember { mutableStateOf<TrackReorder?>(null) }
+    val haptics = LocalHapticFeedback.current
+    val editSlop = LocalViewConfiguration.current.touchSlop
     val viewport = vm.viewport
     val maxScroll = geometry.maxScrollY(tracks.size, listHeight + geometry.metrics.rulerHeight)
     // Drag list, shares timeline scroll
@@ -81,6 +107,11 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
         val before = viewport.scrollY
         viewport.scrollY = (before - delta).coerceIn(0f, maxScroll)
         before - viewport.scrollY
+    }
+    val defaultFling = ScrollableDefaults.flingBehavior()
+    val rowPx = geometry.metrics.rowHeight
+    val laneFling = remember(defaultFling, rowPx) {
+        LaneSnapFling(rowPx, viewport, defaultFling) { listHeight < SINGLE_LANE_ROWS * rowPx }
     }
     LaunchedEffect(maxScroll) { viewport.scrollY = viewport.scrollY.coerceIn(0f, maxScroll) }
     Column(Modifier.width(132.dp).fillMaxHeight().background(Palette.Bg)) {
@@ -96,7 +127,7 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
                 .fillMaxWidth()
                 .clipToBounds()
                 .onSizeChanged { listHeight = it.height.toFloat() }
-                .scrollable(scrollState, Orientation.Vertical),
+                .scrollable(scrollState, Orientation.Vertical, flingBehavior = laneFling),
         ) {
             // Unbounded so offscreen rows keep height
             Column(
@@ -105,16 +136,29 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
                     .wrapContentHeight(Alignment.Top, unbounded = true)
                     .offset { IntOffset(0, -viewport.scrollY.roundToInt()) },
             ) {
-                tracks.forEach { track ->
+                tracks.forEachIndexed { index, track ->
                     TrackHeaderRow(
                         track = track,
                         selected = track.id == selectedTrackId,
                         playing = playing,
+                        dragOffset = reorder?.takeIf { it.trackId == track.id }?.offset,
                         level = { vm.trackLevel(track.id) },
                         onSelect = { vm.selectTrack(track.id) },
                         onEdit = { editing = track },
                         onMute = { vm.updateTrack(track.id) { it.copy(mute = !it.mute) } },
                         onSolo = { vm.updateTrack(track.id) { it.copy(solo = !it.solo) } },
+                        reorder = HeaderDrag(
+                            onStart = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                reorder = TrackReorder(track.id, index)
+                            },
+                            onDrag = { dy -> reorder = reorder?.let { it.copy(offset = it.offset + dy, travel = it.travel + abs(dy)) } },
+                            onEnd = {
+                                reorder?.let { drag -> finishReorder(vm, drag, geometry.metrics.rowHeight, editSlop) { editing = track } }
+                                reorder = null
+                            },
+                            onCancel = { reorder = null },
+                        ),
                     )
                 }
                 FlatButton("Tambah track", Icons.Rounded.Add, vm::addTrack, Modifier.fillMaxWidth().padding(6.dp))
@@ -124,24 +168,75 @@ fun TrackHeaders(vm: EditorViewModel, tracks: List<Track>, selectedTrackId: Stri
     editing?.let { track -> TrackEditDialog(vm, track) { editing = null } }
 }
 
+/** Single lane fling rests on rows. */
+private class LaneSnapFling(
+    private val rowPx: Float,
+    private val viewport: TimelineViewport,
+    private val fallback: FlingBehavior,
+    private val singleLane: () -> Boolean,
+) : FlingBehavior {
+    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+        if (!singleLane()) return with(fallback) { this@performFling.performFling(initialVelocity) }
+        val rows = viewport.scrollY / rowPx
+        val index = when {
+            initialVelocity > FLICK_VELOCITY -> floor(rows)
+            initialVelocity < -FLICK_VELOCITY -> ceil(rows)
+            else -> round(rows)
+        }
+        var last = viewport.scrollY
+        animate(last, index * rowPx) { value, _ ->
+            scrollBy(last - value)
+            last = value
+        }
+        return 0f
+    }
+}
+
+/** Header reorder callbacks. */
+private class HeaderDrag(
+    val onStart: () -> Unit,
+    val onDrag: (Float) -> Unit,
+    val onEnd: () -> Unit,
+    val onCancel: () -> Unit,
+)
+
+// Rounded row travel picks slot
+private fun finishReorder(vm: EditorViewModel, drag: TrackReorder, rowPx: Float, editSlop: Float, onEdit: () -> Unit) {
+    if (drag.travel < editSlop) return onEdit()
+    val target = drag.fromIndex + (drag.offset / rowPx).roundToInt()
+    vm.change { TrackOps.move(it, drag.trackId, target) }
+}
+
 // Row height matches timeline rows
 @Composable
 private fun TrackHeaderRow(
     track: Track,
     selected: Boolean,
     playing: Boolean,
+    dragOffset: Float?,
     level: () -> Float,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onMute: () -> Unit,
     onSolo: () -> Unit,
+    reorder: HeaderDrag,
 ) {
+    val drag by rememberUpdatedState(reorder)
     Row(
         modifier = Modifier
+            .zIndex(if (dragOffset != null) DRAG_Z else 0f)
+            .offset { IntOffset(0, (dragOffset ?: 0f).roundToInt()) }
             .fillMaxWidth()
             .height((ROW_DP - ROW_GAP_DP).dp)
-            .background(if (selected) Palette.Card else Palette.Surface)
-            .combinedClickable(onClick = onSelect, onLongClick = onEdit, onDoubleClick = onEdit)
+            .background(if (selected || dragOffset != null) Palette.Card else Palette.Surface)
+            .pointerInput(track.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { drag.onStart() },
+                    onDragEnd = { drag.onEnd() },
+                    onDragCancel = { drag.onCancel() },
+                ) { _, amount -> drag.onDrag(amount.y) }
+            }
+            .combinedClickable(onClick = onSelect, onDoubleClick = onEdit)
             .padding(start = 6.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

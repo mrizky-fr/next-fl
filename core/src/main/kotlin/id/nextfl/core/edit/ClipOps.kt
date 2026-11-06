@@ -13,6 +13,12 @@ object ClipOps {
 
     fun remove(doc: ProjectDoc, clipId: String): ProjectDoc = doc.copy(clips = doc.clips.filterNot { it.id == clipId })
 
+    // Unknown track keeps current lane
+    fun move(doc: ProjectDoc, clipId: String, trackId: String, startBeat: Double): ProjectDoc {
+        val lane = trackId.takeIf { id -> doc.tracks.any { it.id == id } }
+        return update(doc, clipId) { it.copy(trackId = lane ?: it.trackId, startBeat = maxOf(0.0, startBeat)) }
+    }
+
     fun split(doc: ProjectDoc, assets: AssetMap, clipId: String, atSeconds: Double, newId: String): ProjectDoc {
         val clip = doc.clips.find { it.id == clipId } ?: return doc
         val span = clipSpan(clip, assets, doc.bpm)

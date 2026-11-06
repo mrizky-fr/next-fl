@@ -1,5 +1,6 @@
 package id.nextfl.app.ui
 
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,7 +71,13 @@ fun rememberAudioImporter(vm: EditorViewModel): () -> Unit {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
         if (uris.isNotEmpty()) vm.importAudio(context, uris)
     }
-    return { picker.launch(arrayOf("audio/*")) }
+    return {
+        try {
+            picker.launch(arrayOf("audio/*"))
+        } catch (missing: ActivityNotFoundException) {
+            vm.showError("Tidak ada aplikasi pemilih file")
+        }
+    }
 }
 
 /** Full-width bar on every tab. */

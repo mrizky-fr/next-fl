@@ -140,7 +140,8 @@ class FxPresetsTest {
             FxPresets.graphicEq.map { FxChain(graphicEq = it.settings) } +
             FxPresets.stereoizer.map { FxChain(stereoizer = it.settings) } +
             FxPresets.leveller.map { FxChain(leveller = it.settings) } +
-            FxPresets.eq.map { FxChain(eq = it.settings) }
+            FxPresets.eq.map { FxChain(eq = it.settings) } +
+            FxPresets.compressor.map { FxChain(compressor = it.settings) }
         chains.forEach { assertEquals(it, Sanitize.fx(it)) }
     }
 

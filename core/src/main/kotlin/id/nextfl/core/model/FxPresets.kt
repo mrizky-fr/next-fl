@@ -44,6 +44,14 @@ object FxPresets {
         FxPreset("+12 dB", LevellerSettings(enabled = true, gainDb = 12f)),
     )
 
+    val compressor = listOf(
+        FxPreset("Default", CompressorSettings(enabled = true)),
+        FxPreset("Glue", CompressorSettings(enabled = true, thresholdDb = -14f, ratio = 2f, attackMs = 30f, releaseMs = 200f, makeupDb = 2f)),
+        FxPreset("Vokal", CompressorSettings(enabled = true, thresholdDb = -20f, ratio = 3f, attackMs = 5f, releaseMs = 120f, autoMakeup = true)),
+        FxPreset("Punch", CompressorSettings(enabled = true, thresholdDb = -16f, ratio = 4f, attackMs = 25f, releaseMs = 80f, kneeDb = 3f, makeupDb = 3f)),
+        FxPreset("Squash", CompressorSettings(enabled = true, thresholdDb = -30f, ratio = 10f, attackMs = 1f, releaseMs = 60f, kneeDb = 2f, autoMakeup = true)),
+    )
+
     /** Preset matching current values, ignoring on/off. */
     fun <T> nameOf(presets: List<FxPreset<T>>, current: T, switchedOn: (T) -> T): String =
         presets.firstOrNull { it.settings == switchedOn(current) }?.name ?: CUSTOM

@@ -4,7 +4,8 @@ import id.nextfl.core.pcm.StereoSink
 import kotlin.math.min
 
 object OfflineRenderer {
-    private const val BLOCK = 1024
+    // Matches live block: identical ramps
+    private const val BLOCK = 512
 
     fun totalFrames(graph: RenderGraph): Long = if (graph.endFrame == 0L) 0L else graph.endFrame + graph.tailFrames
 

@@ -4,10 +4,10 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /** Track DSP state across swaps. */
-class TrackProcessor(sampleRate: Int, maxBlock: Int) {
+class TrackProcessor(private val sampleRate: Int, maxBlock: Int) {
     val left = FloatArray(maxBlock)
     val right = FloatArray(maxBlock)
-    private val chain = FxChainProcessor(sampleRate)
+    private var chain = FxChainProcessor(sampleRate)
     private var gainL = 0f
     private var gainR = 0f
 
@@ -23,11 +23,19 @@ class TrackProcessor(sampleRate: Int, maxBlock: Int) {
 
     fun process(params: TrackParams, frames: Int) {
         chain.process(params.fx, left, right, frames)
-        applyGain(params, frames)
+        val blockPeak = applyGain(params, frames)
+        peak = if (blockPeak.isFinite()) blockPeak else recover(frames)
+    }
+
+    // NaN poisoned FX: start fresh
+    private fun recover(frames: Int): Float {
+        clear(frames)
+        chain = FxChainProcessor(sampleRate)
+        return 0f
     }
 
     // Linear ramp avoids zipper noise
-    private fun applyGain(params: TrackParams, frames: Int) {
+    private fun applyGain(params: TrackParams, frames: Int): Float {
         val targetL = params.gain * if (params.pan > 0) 1 - params.pan else 1f
         val targetR = params.gain * if (params.pan < 0) 1 + params.pan else 1f
         val stepL = (targetL - gainL) / frames
@@ -42,6 +50,6 @@ class TrackProcessor(sampleRate: Int, maxBlock: Int) {
         }
         gainL = targetL
         gainR = targetR
-        peak = blockPeak
+        return blockPeak
     }
 }

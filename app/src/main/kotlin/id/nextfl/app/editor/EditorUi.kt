@@ -35,7 +35,9 @@ class TimelineViewport {
         if (pixelsPerSecond == 0f) pixelsPerSecond = INITIAL_DP_PER_SECOND * density
     }
 
+    // Guards NaN before first layout
     fun zoomAround(anchorX: Float, factor: Float, density: Float) {
+        if (pixelsPerSecond <= 0f || !factor.isFinite() || factor <= 0f) return
         val anchorTime = scrollSeconds + anchorX / pixelsPerSecond
         pixelsPerSecond = (pixelsPerSecond * factor).coerceIn(MIN_DP_PER_SECOND * density, MAX_DP_PER_SECOND * density)
         scrollSeconds = (anchorTime - anchorX / pixelsPerSecond).coerceAtLeast(0.0)

@@ -19,7 +19,7 @@ internal class GrainReader(sampleRate: Int) {
     private val taps = hop / STRIDE
     private val reference = FloatArray(taps)
     private val offsets = IntArray(taps)
-    private var region = FloatArray(0)
+    private var region = FloatArray(2 * seek + taps * STRIDE * PRESIZED_STEP + 2)
 
     var left = 0f
         private set
@@ -31,6 +31,8 @@ internal class GrainReader(sampleRate: Int) {
         internal var index = Long.MIN_VALUE
         internal var current = 0.0
         internal var previous = 0.0
+        internal var currentStep = 1.0
+        internal var previousStep = 1.0
     }
 
     // Two Hann grains, half overlap
@@ -38,38 +40,60 @@ internal class GrainReader(sampleRate: Int) {
         val k = Math.floorDiv(local, hop.toLong())
         if (k != state.index) advance(voice, state, k)
         val u = (local - k * hop).toInt()
-        val a = state.current + u * voice.grainStep
-        val b = state.previous + (u + hop) * voice.grainStep
+        val a = state.current + u * state.currentStep
+        val b = state.previous + (u + hop) * state.previousStep
         val wa = window[u]
         val wb = window[u + hop]
         left = wa * Interpolator.left(voice.source, a) + wb * Interpolator.left(voice.source, b)
         right = wa * Interpolator.right(voice.source, a) + wb * Interpolator.right(voice.source, b)
     }
 
+    // Step frozen per grain: no clicks
     private fun advance(voice: ClipVoice, state: State, k: Long) {
-        state.previous = if (k == state.index + 1) state.current else ideal(voice, k - 1)
-        state.current = align(voice, ideal(voice, k), state.previous + hop * voice.grainStep)
+        val step = voice.grainStep
+        if (k == state.index + 1) {
+            state.previous = state.current
+            state.previousStep = state.currentStep
+        } else {
+            state.previous = ideal(voice, k - 1)
+            state.previousStep = step
+        }
+        state.currentStep = step
         state.index = k
+        if (k <= 0L) {
+            startAtClipOffset(voice, state)
+            return
+        }
+        val continuation = state.previous + hop * state.previousStep
+        state.current = align(voice, ideal(voice, k), continuation, state.previousStep)
+    }
+
+    // Twin grains: exact source, no fade
+    private fun startAtClipOffset(voice: ClipVoice, state: State) {
+        state.current = voice.sourceStart
+        state.previous = voice.sourceStart - hop * state.currentStep
+        state.previousStep = state.currentStep
     }
 
     private fun ideal(voice: ClipVoice, k: Long) = voice.sourceStart + k * hop * voice.step
 
     // Best match to previous continuation
-    private fun align(voice: ClipVoice, ideal: Double, continuation: Double): Double {
+    private fun align(voice: ClipVoice, ideal: Double, continuation: Double, previousStep: Double): Double {
         val source = voice.source
         val step = voice.grainStep
         for (j in 0 until taps) {
             offsets[j] = (j * STRIDE * step).toInt()
-            reference[j] = mono(source, (continuation + j * STRIDE * step).toInt())
+            reference[j] = mono(source, (continuation + j * STRIDE * previousStep).toInt())
         }
         val base = floor(ideal).toInt() - seek
         val span = 2 * seek + ceil(taps * STRIDE * step).toInt() + 2
         if (region.size < span) region = FloatArray(span)
         for (j in 0 until span) region[j] = mono(source, base + j)
         val range = 2 * seek
-        var best = seek
+        val earliest = (ceil(voice.sourceStart).toInt() - base).coerceIn(0, range)
+        var best = max(seek, earliest)
         var bestScore = Double.NEGATIVE_INFINITY
-        var offset = 0
+        var offset = earliest
         while (offset <= range) {
             val score = similarity(offset)
             if (score > bestScore) {
@@ -79,7 +103,7 @@ internal class GrainReader(sampleRate: Int) {
             offset += COARSE
         }
         val coarse = best
-        for (fine in max(0, coarse - COARSE + 1)..min(range, coarse + COARSE - 1)) {
+        for (fine in max(earliest, coarse - COARSE + 1)..min(range, coarse + COARSE - 1)) {
             val score = similarity(fine)
             if (score > bestScore) {
                 bestScore = score
@@ -107,5 +131,6 @@ internal class GrainReader(sampleRate: Int) {
         const val SEEK_SECONDS = 0.012
         const val STRIDE = 8
         const val COARSE = 4
+        const val PRESIZED_STEP = 4
     }
 }

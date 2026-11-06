@@ -59,7 +59,12 @@ class GlowSprite {
 /** Cached dimmed, blurred backdrop. */
 class BackgroundLayer {
     private var cached: Bitmap? = null
-    private var cacheKey: List<Any?> = emptyList()
+    private var keyImage: Bitmap? = null
+    private var keyWidth = 0
+    private var keyHeight = 0
+    private var keyDim = 0f
+    private var keyBlur = 0f
+    private var keyGray = false
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val verts = FloatArray((MESH + 1) * (MESH + 1) * 2)
 
@@ -75,11 +80,10 @@ class BackgroundLayer {
         angle: Float = 0f,
         ripple: RippleField? = null,
     ) {
-        val key = listOf(System.identityHashCode(image), width, height, settings.backgroundDim, settings.backgroundBlur, settings.grayscale)
-        if (key != cacheKey || cached == null) {
+        if (cached == null || isStale(image, width, height, settings)) {
             cached?.recycle()
             cached = build(width, height, image, settings)
-            cacheKey = key
+            storeKey(image, width, height, settings)
         }
         val bitmap = cached ?: return
         if (angle != 0f || ripple?.isActive == true) {
@@ -91,6 +95,20 @@ class BackgroundLayer {
         canvas.scale(zoom, zoom)
         canvas.drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, paint)
         canvas.restore()
+    }
+
+    // Primitive key, no per-frame allocation
+    private fun isStale(image: Bitmap?, width: Int, height: Int, settings: VisualSettings): Boolean =
+        image !== keyImage || width != keyWidth || height != keyHeight || settings.backgroundDim != keyDim ||
+            settings.backgroundBlur != keyBlur || settings.grayscale != keyGray
+
+    private fun storeKey(image: Bitmap?, width: Int, height: Int, settings: VisualSettings) {
+        keyImage = image
+        keyWidth = width
+        keyHeight = height
+        keyDim = settings.backgroundDim
+        keyBlur = settings.backgroundBlur
+        keyGray = settings.grayscale
     }
 
     // Swing and water waves via mesh

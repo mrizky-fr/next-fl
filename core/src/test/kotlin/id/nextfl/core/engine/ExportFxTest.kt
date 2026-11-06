@@ -2,6 +2,7 @@ package id.nextfl.core.engine
 
 import id.nextfl.core.TestSignals
 import id.nextfl.core.model.AudioAsset
+import id.nextfl.core.model.CompressorSettings
 import id.nextfl.core.model.Defaults
 import id.nextfl.core.model.FxChain
 import id.nextfl.core.model.GraphicEqSettings
@@ -73,6 +74,21 @@ class ExportFxTest {
         val difference = (rate / 5 until rate).sumOf { ((left[it] - right[it]) * (left[it] - right[it])).toDouble() }
         assertTrue(difference > 1.0, "stereoizer left right difference $difference")
         assertTrue(rms(left, 0.2, 0.8) > rms(plain.first, 0.2, 0.8) * 1.5, "graphic EQ boost near 375 Hz missing")
+    }
+
+    @Test
+    fun compressorIsRenderedOnTrackAndMaster() {
+        val squash = FxChain(compressor = CompressorSettings(enabled = true, thresholdDb = -30f, ratio = 10f, kneeDb = 0f, attackMs = 1f))
+        val (track, _) = export { doc, _ -> doc.withTrack { it.withFx(squash) } }
+        val trackRatio = rms(track, 0.2, 0.8) / rms(plain.first, 0.2, 0.8)
+        assertTrue(trackRatio < 0.3, "track compressor missing, ratio $trackRatio")
+        val (master, _) = export { doc, _ -> doc.copy(masterFx = squash) }
+        val masterRatio = rms(master, 0.2, 0.8) / rms(plain.first, 0.2, 0.8)
+        assertTrue(masterRatio < 0.3, "master compressor missing, ratio $masterRatio")
+        val neutralChain = FxChain(compressor = CompressorSettings(enabled = true))
+        val (neutral, _) = export { doc, _ -> doc.withTrack { it.withFx(neutralChain) } }
+        val unity = rms(neutral, 0.2, 0.8) / rms(plain.first, 0.2, 0.8)
+        assertTrue(unity in 0.99..1.01, "default compressor must be unity, ratio $unity")
     }
 
     @Test

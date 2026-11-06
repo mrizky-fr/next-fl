@@ -107,7 +107,9 @@ class StereoBiquad {
             right[i] = yr
         }
         if (kotlin.math.abs(z1L) < DENORMAL) z1L = 0f
+        if (kotlin.math.abs(z2L) < DENORMAL) z2L = 0f
         if (kotlin.math.abs(z1R) < DENORMAL) z1R = 0f
+        if (kotlin.math.abs(z2R) < DENORMAL) z2R = 0f
     }
 
     private companion object {

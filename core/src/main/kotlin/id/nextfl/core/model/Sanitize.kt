@@ -59,6 +59,16 @@ object Sanitize {
             gainDb = chain.leveller.gainDb.coerceIn(FxRanges.LEVELLER_GAIN),
             pan = chain.leveller.pan.coerceIn(FxRanges.BIPOLAR),
         ),
+        compressor = compressor(chain.compressor),
+    )
+
+    private fun compressor(settings: CompressorSettings): CompressorSettings = settings.copy(
+        thresholdDb = settings.thresholdDb.coerceIn(FxRanges.COMP_THRESHOLD),
+        ratio = settings.ratio.coerceIn(FxRanges.COMP_RATIO),
+        attackMs = settings.attackMs.coerceIn(FxRanges.COMP_ATTACK_MS),
+        releaseMs = settings.releaseMs.coerceIn(FxRanges.COMP_RELEASE_MS),
+        kneeDb = settings.kneeDb.coerceIn(FxRanges.COMP_KNEE),
+        makeupDb = settings.makeupDb.coerceIn(FxRanges.COMP_MAKEUP),
     )
 
     private fun reverb(settings: ReverbSettings): ReverbSettings = settings.copy(

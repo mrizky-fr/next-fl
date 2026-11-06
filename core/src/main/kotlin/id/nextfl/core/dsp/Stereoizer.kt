@@ -16,6 +16,7 @@ class Stereoizer(private val sampleRate: Int) {
     private var sideIn = 0f
     private var sideOut = 0f
     private var current: StereoizerSettings? = null
+    private var dirty = false
 
     // Gliding values, then targets
     private var mix = 0f
@@ -58,7 +59,11 @@ class Stereoizer(private val sampleRate: Int) {
     val isActive: Boolean get() = mixTarget > 0f || mix > SILENT
 
     fun process(left: FloatArray, right: FloatArray, count: Int) {
-        if (!isActive) return
+        if (!isActive) {
+            if (dirty) clear()
+            return
+        }
+        dirty = true
         for (i in 0 until count) {
             step()
             val l = left[i]
@@ -76,6 +81,16 @@ class Stereoizer(private val sampleRate: Int) {
             right[i] = r + (outR - r) * mix
             if (++index == capacity) index = 0
         }
+    }
+
+    // Re-enable starts without stale history
+    private fun clear() {
+        dirty = false
+        midLine.fill(0f)
+        leftLine.fill(0f)
+        rightLine.fill(0f)
+        sideIn = 0f
+        sideOut = 0f
     }
 
     private fun highPass(input: Float): Float {
