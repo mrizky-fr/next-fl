@@ -8,6 +8,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -82,6 +83,7 @@ class CometField(private val random: Random = Random(11)) {
         val trailAge = FloatArray(TRAIL_POINTS)
         val trailScale = FloatArray(TRAIL_POINTS)
         val trailPhase = FloatArray(TRAIL_POINTS)
+        val trailReach = FloatArray(TRAIL_POINTS)
         var trailStart = 0
         var trailCount = 0
     }
@@ -143,6 +145,7 @@ class CometField(private val random: Random = Random(11)) {
         comet.angle += (comet.spin + boost * SPIN_BOOST) * dt
         ageTrail(comet, dt)
         emitTrail(comet, fromX, fromY, step, dt, unit)
+        trimTrail(comet, unit)
     }
 
     // Interpolated puffs, never gaps
@@ -163,6 +166,30 @@ class CometField(private val random: Random = Random(11)) {
             comet.sinceEmit = 0f
             comet.travelled = 0f
         }
+    }
+
+    // Caps tail length behind head
+    private fun trimTrail(comet: Comet, unit: Float) {
+        val maxLength = unit * TRAIL_MAX_LENGTH
+        if (maxLength <= 0f) {
+            comet.trailCount = 0
+            return
+        }
+        var reach = 0f
+        var x = comet.x
+        var y = comet.y
+        var kept = 0
+        for (i in comet.trailCount - 1 downTo 0) {
+            val index = (comet.trailStart + i) % TRAIL_POINTS
+            reach += hypot(comet.trailX[index] - x, comet.trailY[index] - y)
+            if (reach > maxLength) break
+            comet.trailReach[index] = reach / maxLength
+            x = comet.trailX[index]
+            y = comet.trailY[index]
+            kept++
+        }
+        comet.trailStart = (comet.trailStart + comet.trailCount - kept) % TRAIL_POINTS
+        comet.trailCount = kept
     }
 
     private fun isGone(comet: Comet, unit: Float): Boolean {
@@ -194,11 +221,12 @@ class CometField(private val random: Random = Random(11)) {
         for (i in 0 until comet.trailCount) {
             val index = (comet.trailStart + i) % TRAIL_POINTS
             val age = comet.trailAge[index]
-            val t = (age / TRAIL_LIFE).coerceIn(0f, 1f)
-            // Tapers toward the tail end
+            val life = (age / TRAIL_LIFE).coerceIn(0f, 1f)
+            // Fades by age or length
+            val t = max(life, comet.trailReach[index]).coerceIn(0f, 1f)
             val radius = comet.size * comet.trailScale[index] * PUFF_START * (1f - t * PUFF_TAPER)
-            val driftX = sin(comet.trailPhase[index] + age * SMOKE_SWAY_RATE) * unit * SMOKE_SWAY * t
-            val driftY = -unit * SMOKE_RISE * t
+            val driftX = sin(comet.trailPhase[index] + age * SMOKE_SWAY_RATE) * unit * SMOKE_SWAY * life
+            val driftY = -unit * SMOKE_RISE * life
             puff.alpha = ((1f - t).pow(PUFF_FADE) * PUFF_ALPHA * 255).toInt().coerceIn(0, 255)
             canvas.drawCircle(comet.trailX[index] + driftX, comet.trailY[index] + driftY, radius, puff)
         }
@@ -244,8 +272,9 @@ class CometField(private val random: Random = Random(11)) {
     }
 
     private companion object {
-        const val TRAIL_POINTS = 320
-        const val TRAIL_LIFE = 1.3f
+        const val TRAIL_POINTS = 128
+        const val TRAIL_LIFE = 0.8f
+        const val TRAIL_MAX_LENGTH = 0.16f
         const val TRAIL_SPACING = 0.004f
         const val EMIT_SECONDS = 0.03f
         const val PUFF_START = 0.85f
@@ -255,7 +284,7 @@ class CometField(private val random: Random = Random(11)) {
         const val PUFF_MIN_SCALE = 0.75f
         const val PUFF_SCALE_SPREAD = 0.5f
         const val CRUISE_SPEED = 0.05f
-        const val BURST_SPEED = 1.5f
+        const val BURST_SPEED = 3f
         const val ENERGY_SPEED = 0.08f
         const val BOOST_DECAY = 3.2f
         const val FALL_HEADING = 2.55f
