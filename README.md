@@ -4,7 +4,7 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.36-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.39-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 <sub>Android 10+ · ±3,2 MB · Gratis</sub>
 
@@ -27,7 +27,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
   <tr>
     <td width="50%" valign="top">
       <h3>Playlist multi-track</h3>
-      Import MP3, M4A, WAV, OGG, FLAC, atau Opus. Geser, trim, potong di playhead, duplikat, dan snap ke bar atau beat dengan pinch zoom.
+      Import MP3, M4A, WAV, OGG, FLAC, atau Opus. Geser klip bebas ke kiri, kanan, dan pindah track seperti FL Studio, trim, potong di playhead, duplikat, urutkan track dengan tahan dan seret, snap ke bar atau beat, plus pinch zoom dan geser dengan fling.
     </td>
     <td width="50%" valign="top">
       <h3>Tempo yang menurut</h3>
@@ -37,7 +37,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
   <tr>
     <td width="50%" valign="top">
       <h3>Mixer ala studio</h3>
-      Fader, pan, mute dan solo, plus FX chain di setiap track dan master: Parametric EQ, Stereoizer, Reverb, Graphic EQ 8 band, dan Leveller. Lengkap dengan preset, reset, salin, dan tempel.
+      Fader, pan, mute dan solo, plus FX chain di setiap track dan master: Parametric EQ, Compressor, Stereoizer, Reverb, Graphic EQ 8 band, dan Leveller. Semua efek mulus tanpa klik saat diputar atau dinyalakan, lengkap dengan preset, reset, salin, dan tempel. Master memakai limiter lookahead supaya keras tapi tidak pecah.
     </td>
     <td width="50%" valign="top">
       <h3>NextPlayer</h3>
@@ -60,7 +60,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 
 <div align="center">
 
-<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.36-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
+<a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.39-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
 </div>
 
