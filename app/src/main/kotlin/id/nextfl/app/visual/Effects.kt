@@ -8,6 +8,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -102,6 +103,8 @@ class CometField(private val random: Random = Random(11)) {
     private val headFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     private val puff = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+    private val streak = StreakSprite()
+    private val glow = GlowSprite()
     private var boost = 0f
     private var width = 0
     private var height = 0
@@ -126,12 +129,22 @@ class CometField(private val random: Random = Random(11)) {
         }
     }
 
-    // All smoke first, heads on top
-    fun draw(canvas: Canvas, color: Int, unit: Float) {
+    // Smoke, then glare, heads on top
+    fun draw(canvas: Canvas, color: Int, unit: Float, glare: Float) {
         stroke.strokeWidth = unit * HEAD_STROKE
         border.strokeWidth = unit * (HEAD_STROKE + HEAD_BORDER * 2)
         for (comet in comets) drawPuffs(canvas, comet, color, unit)
+        if (glare > 0f) for (comet in comets) drawGlare(canvas, comet, color, unit, glare)
         for (comet in comets) drawHead(canvas, comet)
+    }
+
+    // Light streak trailing the head
+    private fun drawGlare(canvas: Canvas, comet: Comet, color: Int, unit: Float, glare: Float) {
+        val lit = glare * (GLARE_BASE + boost * GLARE_BEAT)
+        val behind = (comet.heading + comet.wobble) * RAD_TO_DEG + HALF_TURN_DEG
+        val length = unit * GLARE_LENGTH * (GLARE_MIN_REACH + (1f - GLARE_MIN_REACH) * glare) * (1f + boost * GLARE_STRETCH)
+        streak.draw(canvas, comet.x, comet.y, behind, length, comet.size * GLARE_THICKNESS, color, lit)
+        glow.draw(canvas, comet.x, comet.y, comet.size * (GLOW_RADIUS + boost * GLOW_BEAT), color, lit * GLOW_ALPHA)
     }
 
     private fun move(comet: Comet, speed: Float, dt: Float, unit: Float) {
@@ -301,6 +314,17 @@ class CometField(private val random: Random = Random(11)) {
         const val HEAD_BORDER = 0.004f
         const val THIRD_TURN = 2.0943952f
         const val TWO_PI = 6.2831855f
+        const val RAD_TO_DEG = 57.29578f
+        const val HALF_TURN_DEG = 180f
+        const val GLARE_BASE = 0.5f
+        const val GLARE_BEAT = 0.5f
+        const val GLARE_LENGTH = 0.1f
+        const val GLARE_MIN_REACH = 0.5f
+        const val GLARE_STRETCH = 0.8f
+        const val GLARE_THICKNESS = 2.4f
+        const val GLOW_RADIUS = 2.2f
+        const val GLOW_BEAT = 1.2f
+        const val GLOW_ALPHA = 0.5f
     }
 }
 
@@ -315,6 +339,13 @@ class BeatHills {
     private var anchor = 0f
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+    private val streak = StreakSprite()
+
+    // Outermost edge per row
+    private val rightReach = FloatArray(ROWS)
+    private val rightLift = FloatArray(ROWS)
+    private val leftReach = FloatArray(ROWS)
+    private val leftLift = FloatArray(ROWS)
 
     // Rises on beat, holds while bass lasts
     fun update(beat: Boolean, strength: Float, bass: Float, dt: Float) {
@@ -349,10 +380,12 @@ class BeatHills {
     }
 
     // Filled hills between circle and curve
-    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float) {
+    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, sensitivity: Float, glare: Float) {
         if (level < MIN_LEVEL) return
         val lift = level * AMPLITUDE * sensitivity
         val halfWidth = HILL_HALF_WIDTH * (WIDTH_BASE + WIDTH_GROWTH * min(level, 1.2f))
+        val rowStep = radius * ROW_STEP
+        if (glare > 0f) clearRows()
         path.reset()
         path.fillType = Path.FillType.EVEN_ODD
         for (j in 0 until POINTS) {
@@ -362,11 +395,52 @@ class BeatHills {
             val x = cx + cos(angle) * r
             val y = cy + sin(angle) * r
             if (j == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            if (glare > 0f) binRow(x - cx, cy - y, hill * lift, rowStep)
         }
         path.close()
         path.addCircle(cx, cy, radius, Path.Direction.CW)
         fill.color = color
         canvas.drawPath(path, fill)
+        if (glare > 0f) drawGlare(canvas, cx, cy, radius, rowStep, color, glare)
+    }
+
+    private fun clearRows() {
+        rightReach.fill(0f)
+        rightLift.fill(0f)
+        leftReach.fill(0f)
+        leftLift.fill(0f)
+    }
+
+    private fun binRow(dx: Float, up: Float, height: Float, rowStep: Float) {
+        val row = floor(up / rowStep).toInt() + ROW_OFFSET
+        if (row !in 0 until ROWS) return
+        if (dx >= 0f) {
+            if (dx > rightReach[row]) {
+                rightReach[row] = dx
+                rightLift[row] = height
+            }
+        } else if (-dx > leftReach[row]) {
+            leftReach[row] = -dx
+            leftLift[row] = height
+        }
+    }
+
+    // Right hill shines right only
+    private fun drawGlare(canvas: Canvas, cx: Float, cy: Float, radius: Float, rowStep: Float, color: Int, glare: Float) {
+        val thickness = rowStep * GLARE_THICKNESS
+        val overlap = thickness * GLARE_OVERLAP
+        for (row in 0 until ROWS) {
+            val y = cy - (row - ROW_OFFSET + 0.5f) * rowStep
+            drawRow(canvas, cx + rightReach[row] - overlap, y, 0f, rightLift[row], radius, thickness, overlap, color, glare)
+            drawRow(canvas, cx - leftReach[row] + overlap, y, HALF_TURN_DEG, leftLift[row], radius, thickness, overlap, color, glare)
+        }
+    }
+
+    private fun drawRow(canvas: Canvas, x: Float, y: Float, degrees: Float, height: Float, radius: Float, thickness: Float, overlap: Float, color: Int, glare: Float) {
+        val strength = (height / AMPLITUDE).coerceIn(0f, MAX_GLARE_STRENGTH)
+        if (strength < MIN_GLARE_STRENGTH) return
+        val length = radius * GLARE_LENGTH * glare * strength + overlap
+        streak.draw(canvas, x, y, degrees, length, thickness, color, (glare * strength * GLARE_ALPHA).coerceAtMost(1f))
     }
 
     // Bell with ripples running outward
@@ -401,6 +475,16 @@ class BeatHills {
         const val SUSTAIN_CURVE = 0.7f
         const val RESPONSE_CURVE = 0.6f
         const val MIN_LEVEL = 0.005f
+        const val ROWS = 56
+        const val ROW_OFFSET = 4
+        const val ROW_STEP = 0.05f
+        const val GLARE_THICKNESS = 2.5f
+        const val GLARE_OVERLAP = 0.3f
+        const val GLARE_LENGTH = 1.6f
+        const val GLARE_ALPHA = 0.9f
+        const val MAX_GLARE_STRENGTH = 1.5f
+        const val MIN_GLARE_STRENGTH = 0.03f
+        const val HALF_TURN_DEG = 180f
         val UPPER_RIGHT = (-PI / 4).toFloat()
         val UPPER_LEFT = (-3 * PI / 4).toFloat()
     }

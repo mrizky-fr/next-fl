@@ -2,6 +2,7 @@ package id.nextfl.app.visual
 
 import android.graphics.BlendMode
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
@@ -125,11 +126,15 @@ class Glitch(private val random: Random = Random(19)) {
     private val offsets = FloatArray(MAX_BANDS)
     private val tops = FloatArray(MAX_BANDS)
     private val heights = FloatArray(MAX_BANDS)
+    private val starts = FloatArray(MAX_BANDS)
     private var bands = 0
     private var reseed = 0f
     private val block = Paint()
     private val red = splitPaint(1f, 0f, 0f).apply { blendMode = BlendMode.PLUS }
     private val cyan = splitPaint(0f, 1f, 1f)
+    private val blockGlare = StreakSprite()
+    private val redGlare = StreakSprite()
+    private val cyanGlare = StreakSprite()
     var level = 0f
         private set
 
@@ -158,7 +163,7 @@ class Glitch(private val random: Random = Random(19)) {
     }
 
     // Shifted slices plus error blocks
-    fun drawSlices(canvas: Canvas, width: Int, height: Int, color: Int, scene: (Canvas) -> Unit) {
+    fun drawSlices(canvas: Canvas, width: Int, height: Int, color: Int, glare: Float, scene: (Canvas) -> Unit) {
         if (level <= 0f) return
         for (i in 0 until bands) {
             val top = tops[i] * height
@@ -172,10 +177,36 @@ class Glitch(private val random: Random = Random(19)) {
         block.alpha = (level * BLOCK_ALPHA).toInt().coerceIn(0, 255)
         for (i in 0 until bands step 2) {
             val top = tops[i] * height
-            val left = (0.5f + offsets[i]).coerceIn(0f, 1f) * width
+            val left = blockLeft(i, width)
             canvas.drawRect(left, top, left + width * BLOCK_WIDTH, top + height * BLOCK_HEIGHT, block)
         }
+        if (glare > 0f) drawGlare(canvas, width, height, color, glare)
     }
+
+    // Streaks follow each slice shift
+    private fun drawGlare(canvas: Canvas, width: Int, height: Int, color: Int, glare: Float) {
+        val unit = min(width, height).toFloat()
+        val alpha = (glare * level * GLARE_ALPHA).coerceAtMost(1f)
+        val reach = width * glare * level
+        for (i in 0 until bands) {
+            val right = offsets[i] >= 0f
+            val y = (tops[i] + heights[i] / 2) * height
+            val thickness = min(heights[i] * height, unit * MAX_GLARE_THICKNESS)
+            val sprite = if (right) redGlare else cyanGlare
+            sprite.draw(canvas, starts[i] * width, y, direction(right), reach * SLICE_GLARE, thickness, if (right) Color.RED else Color.CYAN, alpha)
+        }
+        for (i in 0 until bands step 2) {
+            val right = offsets[i] >= 0f
+            val left = blockLeft(i, width)
+            val x = if (right) left + width * BLOCK_WIDTH else left
+            val y = (tops[i] + BLOCK_HEIGHT / 2) * height
+            blockGlare.draw(canvas, x, y, direction(right), reach * BLOCK_GLARE, height * BLOCK_HEIGHT * BLOCK_GLARE_THICKNESS, color, alpha)
+        }
+    }
+
+    private fun blockLeft(index: Int, width: Int) = (0.5f + offsets[index]).coerceIn(0f, 1f) * width
+
+    private fun direction(right: Boolean) = if (right) 0f else HALF_TURN_DEG
 
     private fun shuffle(amount: Float) {
         bands = (MIN_BANDS + amount * (MAX_BANDS - MIN_BANDS)).toInt()
@@ -183,6 +214,7 @@ class Glitch(private val random: Random = Random(19)) {
             tops[i] = random.nextFloat()
             heights[i] = 0.01f + random.nextFloat() * 0.08f
             offsets[i] = (random.nextFloat() - 0.5f) * MAX_SHIFT * amount
+            starts[i] = GLARE_START_MIN + random.nextFloat() * GLARE_START_SPREAD
         }
     }
 
@@ -204,6 +236,14 @@ class Glitch(private val random: Random = Random(19)) {
         const val BLOCK_ALPHA = 140f
         const val BLOCK_WIDTH = 0.06f
         const val BLOCK_HEIGHT = 0.008f
+        const val GLARE_ALPHA = 0.9f
+        const val SLICE_GLARE = 0.35f
+        const val BLOCK_GLARE = 0.22f
+        const val BLOCK_GLARE_THICKNESS = 4f
+        const val MAX_GLARE_THICKNESS = 0.02f
+        const val GLARE_START_MIN = 0.1f
+        const val GLARE_START_SPREAD = 0.8f
+        const val HALF_TURN_DEG = 180f
 
         // Keeps one color channel only
         fun splitPaint(r: Float, g: Float, b: Float) = Paint().apply {

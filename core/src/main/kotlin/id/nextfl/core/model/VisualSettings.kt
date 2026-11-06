@@ -38,6 +38,9 @@ data class VisualSettings(
     val rippleAmount: Float = 0.5f,
     val pendulumAmount: Float = 0.3f,
     val glitchAmount: Float = 0.25f,
+    val cometGlare: Float = DEFAULT_GLARE,
+    val glitchGlare: Float = DEFAULT_GLARE,
+    val hillGlare: Float = DEFAULT_GLARE,
     val showSocial: Boolean = false,
     val socialUsername: String = "",
     val socialPlatforms: Set<SocialPlatform> = SocialPlatform.entries.toSet(),
@@ -54,5 +57,6 @@ data class VisualSettings(
         // Each comet has heavy trail
         const val MAX_COMETS = 16
         const val MAX_USERNAME = 40
+        const val DEFAULT_GLARE = 0.5f
     }
 }

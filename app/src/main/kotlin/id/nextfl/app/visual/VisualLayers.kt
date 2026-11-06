@@ -16,9 +16,11 @@ import android.graphics.Shader
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -53,6 +55,58 @@ class GlowSprite {
 
     private companion object {
         const val SIZE = 64
+    }
+}
+
+/** Glare streak, one direction only. */
+class StreakSprite {
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply { blendMode = BlendMode.PLUS }
+    private val target = RectF()
+    private var tint = Color.WHITE
+
+    // Starts at x,y, runs along degrees
+    fun draw(canvas: Canvas, x: Float, y: Float, degrees: Float, length: Float, thickness: Float, color: Int, alpha: Float) {
+        if (alpha <= 0.01f || length <= 1f || thickness <= 0.2f) return
+        if (color != tint) {
+            tint = color
+            paint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+        }
+        paint.alpha = (alpha.coerceIn(0f, 1f) * 255).roundToInt()
+        canvas.save()
+        canvas.translate(x, y)
+        if (degrees != 0f) canvas.rotate(degrees)
+        target.set(0f, -thickness / 2, length, thickness / 2)
+        canvas.drawBitmap(bitmap, null, target, paint)
+        canvas.restore()
+    }
+
+    private companion object {
+        const val LENGTH = 128
+        const val THICKNESS = 32
+        const val CORE_SHARPNESS = 40f
+        const val HALO_SHARPNESS = 5f
+        const val HALO = 0.35f
+        const val FADE_POWER = 1.8f
+        const val START_RAMP = 0.04f
+
+        // Shared by every streak
+        val bitmap: Bitmap by lazy { build() }
+
+        // Thin hot core, soft halo
+        fun build(): Bitmap {
+            val pixels = IntArray(LENGTH * THICKNESS)
+            for (j in 0 until THICKNESS) {
+                val v = (j + 0.5f) / THICKNESS * 2f - 1f
+                val profile = min(1f, exp(-v * v * CORE_SHARPNESS) + exp(-v * v * HALO_SHARPNESS) * HALO)
+                for (i in 0 until LENGTH) {
+                    val u = (i + 0.5f) / LENGTH
+                    val fade = (1f - u).pow(FADE_POWER) * min(1f, u / START_RAMP)
+                    val alpha = (profile * fade * 255).roundToInt().coerceIn(0, 255)
+                    pixels[j * LENGTH + i] = Color.argb(alpha, 255, 255, 255)
+                }
+            }
+            return Bitmap.createBitmap(pixels, LENGTH, THICKNESS, Bitmap.Config.ARGB_8888)
+        }
     }
 }
 

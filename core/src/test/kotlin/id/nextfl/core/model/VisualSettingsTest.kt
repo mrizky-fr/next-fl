@@ -22,6 +22,17 @@ class VisualSettingsTest {
     }
 
     @Test
+    fun glareIsClampedAndOldProjectsGetDefault() {
+        val clamped = Sanitize.visual(VisualSettings(cometGlare = 3f, glitchGlare = -1f, hillGlare = 0.4f))
+        assertEquals(1f, clamped.cometGlare)
+        assertEquals(0f, clamped.glitchGlare)
+        assertEquals(0.4f, clamped.hillGlare)
+        val old = Json { ignoreUnknownKeys = true }.decodeFromString(VisualSettings.serializer(), """{"glitchAmount":0.3}""")
+        assertEquals(VisualSettings.DEFAULT_GLARE, old.cometGlare)
+        assertEquals(VisualSettings.DEFAULT_GLARE, old.hillGlare)
+    }
+
+    @Test
     fun socialSettingsSurviveRoundTrip() {
         val json = Json { ignoreUnknownKeys = true }
         val original = VisualSettings(showSocial = true, socialUsername = "@djkyy", socialPlatforms = setOf(SocialPlatform.TIKTOK, SocialPlatform.SPOTIFY))

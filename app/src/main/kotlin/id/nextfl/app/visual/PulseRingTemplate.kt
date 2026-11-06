@@ -147,7 +147,7 @@ class PulseRingTemplate(typeface: Typeface) {
         zoom = 1f + frame.bass * 0.03f * settings.sensitivity + frame.kick * 0.02f
         update(frame, dt, settings)
         if (glitch.isSplitting) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawScene) else scene(canvas)
-        glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), drawScene)
+        glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), settings.glitchGlare, drawScene)
         if (flash > 0.01f) {
             flashPaint.color = Color.argb((flash * 255).toInt().coerceIn(0, 255), 255, 255, 255)
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), flashPaint)
@@ -172,7 +172,7 @@ class PulseRingTemplate(typeface: Typeface) {
         background.draw(canvas, width, height, backgroundImage, settings, zoom, bgX, bgY, pendulum.angle, ripples)
         ripples.drawCrests(canvas, width / 2f + bgX, height / 2f + bgY, settings.ringColor.toInt())
         particles.draw(canvas, sprite, width, height, particleColor, kick)
-        comets.draw(canvas, particleColor, unit)
+        comets.draw(canvas, particleColor, unit, settings.cometGlare)
         centerGroup(canvas)
     }
 
@@ -182,7 +182,7 @@ class PulseRingTemplate(typeface: Typeface) {
         val radius = unit * RING_RADIUS
         val ringColor = settings.ringColor.toInt()
         val pulsed = radius * (1f + kick * LOGO_PULSE * settings.sensitivity)
-        if (settings.showHills) hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity)
+        if (settings.showHills) hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity, settings.hillGlare)
         if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
         val titleY = cy + radius * 1.72f
         drawTitle(canvas, settings.title, cx, titleY, unit)

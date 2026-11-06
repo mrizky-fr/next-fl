@@ -188,6 +188,11 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ValueSlider("Pendulum", settings.pendulumAmount, FxRanges.UNIT, { v -> update { it.copy(pendulumAmount = v) } }, ::formatIntensity)
             ValueSlider("Glitch", settings.glitchAmount, FxRanges.UNIT, { v -> update { it.copy(glitchAmount = v) } }, ::formatIntensity)
         }
+        PanelSection("Cahaya") {
+            ValueSlider("Komet", settings.cometGlare, FxRanges.UNIT, { v -> update { it.copy(cometGlare = v) } }, ::formatIntensity)
+            ValueSlider("Glitch", settings.glitchGlare, FxRanges.UNIT, { v -> update { it.copy(glitchGlare = v) } }, ::formatIntensity)
+            ValueSlider("Gunung beat", settings.hillGlare, FxRanges.UNIT, { v -> update { it.copy(hillGlare = v) } }, ::formatIntensity)
+        }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
