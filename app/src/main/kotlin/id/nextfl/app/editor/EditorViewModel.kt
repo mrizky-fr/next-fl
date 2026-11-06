@@ -31,6 +31,7 @@ import id.nextfl.core.model.ProjectDoc
 import id.nextfl.core.model.Track
 import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.pcm.MappedPcmSource
+import id.nextfl.core.pcm.Mp3Writer
 import id.nextfl.core.pcm.WavWriter
 import id.nextfl.core.util.AudioMath
 import id.nextfl.core.util.Beats
@@ -277,6 +278,16 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         withContext(Dispatchers.Default) {
             WavWriter(app.exporter.openStream(output), AppContainer.SAMPLE_RATE, total).use { writer ->
                 OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender mixdown", it) }, isCancelled = { !isActive })
+            }
+        }
+        output
+    }
+
+    fun exportMp3() = launchExport { graph, track ->
+        val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.mp3", MediaExporter.MP3_MIME))
+        withContext(Dispatchers.Default) {
+            Mp3Writer(app.exporter.openStream(output), AppContainer.SAMPLE_RATE).use { writer ->
+                OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender MP3", it) }, isCancelled = { !isActive })
             }
         }
         output

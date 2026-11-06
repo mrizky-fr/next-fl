@@ -8,6 +8,7 @@ composeBom = "2026.09.00"
 coroutines = "1.11.0"
 serialization = "1.12.0"
 junit = "5.13.4"
+jump3r = "1.0.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,6 +30,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+jump3r = { group = "de.sciss", name = "jump3r", version.ref = "jump3r" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

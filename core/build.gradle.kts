@@ -19,6 +19,8 @@ kotlin {
 dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.core)
+    // Pure-Java LAME, LGPL
+    implementation(libs.jump3r)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.serialization.json)
     testImplementation(platform(libs.junit.bom))

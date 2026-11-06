@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Remove
@@ -87,7 +88,7 @@ fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun ExportDialog(onWav: () -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
+fun ExportDialog(onWav: () -> Unit, onMp3: () -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
     var choosingRatio by remember { mutableStateOf(false) }
     if (choosingRatio) {
         VideoRatioDialog(onBack = { choosingRatio = false }, onRender = onVideo, onDismiss = onDismiss)
@@ -95,6 +96,7 @@ fun ExportDialog(onWav: () -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: (
     }
     ModalDialog("Export", onDismiss) {
         ExportOption(Icons.Rounded.GraphicEq, "Audio WAV", "Mixdown semua track dan efek, 16-bit stereo 44.1 kHz.", onWav)
+        ExportOption(Icons.Rounded.Audiotrack, "Audio MP3", "Mixdown 320 kbps stereo, ringan untuk dibagikan.", onMp3)
         ExportOption(Icons.Rounded.Movie, "Video MP4", "Template NextPlayer bersama audio, 30 fps.") { choosingRatio = true }
     }
 }

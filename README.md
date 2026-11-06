@@ -2,7 +2,7 @@
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:131517,100:0465C4&height=200&section=header&text=NextFL&fontColor=ffffff&fontSize=56&fontAlignY=36&desc=Edit%2C%20Remix%2C%20dan%20Visual%20DJ%20di%20Android&descSize=18&descAlignY=58" alt="NextFL — Edit, Remix, dan Visual DJ di Android" width="100%" />
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+langsung+di+HP;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV%2C+MP3+%26+video+MP4+siap+upload" alt="Edit & remix lagu langsung di HP" />
 
 <a href="https://github.com/mrizky-fr/next-fl/raw/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Download%20%26%20Install%20Now-APK%200.1.39-0465C4?style=for-the-badge" alt="Download & Install Now" height="42" /></a>
 
@@ -19,7 +19,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 - **Gaya FL Studio**, tapi disederhanakan untuk layar sentuh
 - **Mixer sungguhan**, setiap knob benar-benar mengubah suara
 - **Visual ikut beat**, logo, gunung spektrum, dan komet berasap bergerak sesuai drum
-- **Siap posting**, export WAV atau video MP4 16:9, 9:16, dan 1:1
+- **Siap posting**, export WAV, MP3 320 kbps, atau video MP4 16:9, 9:16, dan 1:1
 
 ## Pengalaman Membuat
 
@@ -51,7 +51,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>Export sekali ketuk</h3>
-      Mixdown WAV ke Music/NextFL, atau render video MP4 30 fps ke Movies/NextFL. Pilih rasio dulu, batalkan kapan saja.
+      Mixdown WAV atau MP3 320 kbps ke Music/NextFL, atau render video MP4 30 fps ke Movies/NextFL. Pilih rasio dulu, batalkan kapan saja.
     </td>
   </tr>
 </table>
@@ -114,7 +114,7 @@ Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
 ## Catatan
 
-APK di tombol unduh adalah **build rilis** bertanda tangan, bukan rilis Play Store. File ini selalu ditimpa versi terbaru; versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)).
+APK di tombol unduh adalah **build rilis** bertanda tangan, bukan rilis Play Store. File ini selalu ditimpa versi terbaru; versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)).
 
 ## Pembuat
 

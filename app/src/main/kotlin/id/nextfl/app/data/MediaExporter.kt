@@ -68,6 +68,7 @@ class MediaExporter(private val resolver: ContentResolver) {
     companion object {
         const val FOLDER = "NextFL"
         const val WAV_MIME = "audio/wav"
+        const val MP3_MIME = "audio/mpeg"
         const val MP4_MIME = "video/mp4"
     }
 }
