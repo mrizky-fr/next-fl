@@ -1,11 +1,13 @@
 package id.nextfl.core.pcm
 
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.zip.Deflater
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class Mp3WriterTest {
@@ -13,12 +15,14 @@ class Mp3WriterTest {
 
     private class Frames(val count: Int, val bitrates: Set<Int>, val sampleRates: Set<Int>)
 
-    private fun encode(seconds: Double, bitrate: Int, signal: (Int) -> Float): ByteArray {
+    private fun encode(seconds: Double, bitrate: Int, signal: (Int) -> Float): ByteArray = encodeFrames((seconds * rate).toInt(), bitrate, signal)
+
+    private fun encodeFrames(total: Int, bitrate: Int, signal: (Int) -> Float): ByteArray {
         val bytes = ByteArrayOutputStream()
-        Mp3Writer(bytes, rate, bitrate).use { writer ->
+        val scratch = File.createTempFile("mp3-test", ".mp3")
+        Mp3Writer(bytes, rate, bitrate, scratch).use { writer ->
             val left = FloatArray(BLOCK)
             val right = FloatArray(BLOCK)
-            val total = (seconds * rate).toInt()
             var done = 0
             while (done < total) {
                 val count = minOf(BLOCK, total - done)
@@ -30,6 +34,7 @@ class Mp3WriterTest {
                 done += count
             }
         }
+        assertFalse(scratch.exists(), "scratch file left behind")
         return bytes.toByteArray()
     }
 
@@ -55,6 +60,13 @@ class Mp3WriterTest {
             count++
         }
         return Frames(count, bitrates, sampleRates)
+    }
+
+    private fun ByteArray.indexOfSequence(target: ByteArray): Int {
+        for (start in 0..size - target.size) {
+            if (target.indices.all { this[start + it] == target[it] }) return start
+        }
+        return -1
     }
 
     private fun tone(index: Int) = (0.5 * sin(2 * PI * 440 * index / rate)).toFloat()
@@ -83,6 +95,21 @@ class Mp3WriterTest {
         assertEquals(setOf(rate), frames.sampleRates)
         val seconds = frames.count * SAMPLES_PER_FRAME.toDouble() / rate
         assertTrue(seconds in 2.0..2.2, "duration $seconds")
+    }
+
+    // Players trim delay and padding
+    @Test
+    fun gaplessTagMatchesInputLength() {
+        val samples = rate * 3 / 2 + ODD_TAIL
+        val data = encodeFrames(samples, 192, ::tone)
+        val lame = data.indexOfSequence("LAME".toByteArray())
+        assertTrue(data.indexOfSequence("Info".toByteArray()) in 0 until lame, "Info tag missing")
+        val packed = (0 until 3).fold(0) { value, i -> (value shl 8) or (data[lame + DELAY_OFFSET + i].toInt() and BYTE_MASK) }
+        val delay = packed shr 12
+        val padding = packed and 0xFFF
+        val audioFrames = frames(data).count - 1
+        assertTrue(delay in 500..1500, "delay $delay")
+        assertEquals(samples, audioFrames * SAMPLES_PER_FRAME - delay - padding, "delay $delay padding $padding")
     }
 
     @Test
@@ -117,6 +144,8 @@ class Mp3WriterTest {
         const val FRAME_FACTOR = 144
         const val SAMPLES_PER_FRAME = 1152
         const val DEFLATE_SLACK = 64
+        const val ODD_TAIL = 123
+        const val DELAY_OFFSET = 21
         const val NOISE_MULTIPLIER = 1_103_515_245L
         const val NOISE_INCREMENT = 12_345L
         const val NOISE_MODULUS = 65_536L

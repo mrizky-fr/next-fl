@@ -283,10 +283,10 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
         output
     }
 
-    fun exportMp3() = launchExport { graph, track ->
+    fun exportMp3(bitrateKbps: Int) = launchExport { graph, track ->
         val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.mp3", MediaExporter.MP3_MIME))
         withContext(Dispatchers.Default) {
-            Mp3Writer(app.exporter.openStream(output), AppContainer.SAMPLE_RATE).use { writer ->
+            Mp3Writer(app.exporter.openStream(output), AppContainer.SAMPLE_RATE, bitrateKbps, app.paths.renderMp3).use { writer ->
                 OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender MP3", it) }, isCancelled = { !isActive })
             }
         }

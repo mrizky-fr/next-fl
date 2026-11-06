@@ -29,6 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import id.nextfl.core.pcm.Mp3Writer
+import java.util.Locale
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -88,15 +91,20 @@ fun BpmDialog(bpm: Double, onChange: (Double) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun ExportDialog(onWav: () -> Unit, onMp3: () -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
+fun ExportDialog(onWav: () -> Unit, onMp3: (Int) -> Unit, onVideo: (AspectRatio) -> Unit, onDismiss: () -> Unit) {
     var choosingRatio by remember { mutableStateOf(false) }
+    var choosingBitrate by remember { mutableStateOf(false) }
     if (choosingRatio) {
         VideoRatioDialog(onBack = { choosingRatio = false }, onRender = onVideo, onDismiss = onDismiss)
         return
     }
+    if (choosingBitrate) {
+        Mp3BitrateDialog(onBack = { choosingBitrate = false }, onRender = onMp3, onDismiss = onDismiss)
+        return
+    }
     ModalDialog("Export", onDismiss) {
         ExportOption(Icons.Rounded.GraphicEq, "Audio WAV", "Mixdown semua track dan efek, 16-bit stereo 44.1 kHz.", onWav)
-        ExportOption(Icons.Rounded.Audiotrack, "Audio MP3", "Mixdown 320 kbps stereo, ringan untuk dibagikan.", onMp3)
+        ExportOption(Icons.Rounded.Audiotrack, "Audio MP3", "Mixdown stereo 128 sampai 320 kbps, ringan untuk dibagikan.") { choosingBitrate = true }
         ExportOption(Icons.Rounded.Movie, "Video MP4", "Template NextPlayer bersama audio, 30 fps.") { choosingRatio = true }
     }
 }
@@ -147,6 +155,54 @@ private fun RatioOption(aspect: AspectRatio, selected: Boolean, modifier: Modifi
         Text("$width×$height", style = TextStyles.Caption.copy(color = if (selected) Palette.White else Palette.TextSecondary))
     }
 }
+
+// Best quality preselected
+@Composable
+private fun Mp3BitrateDialog(onBack: () -> Unit, onRender: (Int) -> Unit, onDismiss: () -> Unit) {
+    var selected by remember { mutableIntStateOf(Mp3Writer.DEFAULT_BITRATE_KBPS) }
+    ModalDialog(
+        title = "Pilih kualitas MP3",
+        onDismiss = onDismiss,
+        width = RATIO_DIALOG_WIDTH,
+        actions = {
+            FlatButton("Kembali", Icons.AutoMirrored.Rounded.ArrowBack, onBack, variant = ButtonVariant.GHOST)
+            FlatButton("Render", Icons.Rounded.Audiotrack, { onRender(selected) }, variant = ButtonVariant.ACCENT)
+        },
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Mp3Writer.BITRATES_KBPS.forEach { bitrate ->
+                BitrateOption(bitrate, bitrate == selected, Modifier.weight(1f)) { selected = bitrate }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BitrateOption(bitrate: Int, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val detail = TextStyles.Caption.copy(color = if (selected) Palette.White else Palette.TextSecondary)
+    Column(
+        modifier = modifier
+            .clip(Shape)
+            .background(if (selected) Palette.Accent else Palette.Card)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("$bitrate", style = TextStyles.Title.copy(fontSize = 15.sp))
+        Text("kbps", style = detail)
+        Text(megabytesPerMinute(bitrate), style = detail)
+    }
+}
+
+private fun megabytesPerMinute(bitrateKbps: Int): String =
+    String.format(INDONESIAN, "±%.1f MB/menit", bitrateKbps * BITS_PER_KILOBIT * SECONDS_PER_MINUTE / BITS_PER_BYTE / BYTES_PER_MEGABYTE)
+
+private val INDONESIAN: Locale = Locale.forLanguageTag("id")
+private const val BITS_PER_KILOBIT = 1000.0
+private const val SECONDS_PER_MINUTE = 60.0
+private const val BITS_PER_BYTE = 8.0
+private const val BYTES_PER_MEGABYTE = 1_000_000.0
 
 @Composable
 private fun ExportOption(icon: ImageVector, title: String, description: String, onClick: () -> Unit) {

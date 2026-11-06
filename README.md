@@ -19,7 +19,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 - **Gaya FL Studio**, tapi disederhanakan untuk layar sentuh
 - **Mixer sungguhan**, setiap knob benar-benar mengubah suara
 - **Visual ikut beat**, logo, gunung spektrum, dan komet berasap bergerak sesuai drum
-- **Siap posting**, export WAV, MP3 320 kbps, atau video MP4 16:9, 9:16, dan 1:1
+- **Siap posting**, export WAV, MP3 128 sampai 320 kbps, atau video MP4 16:9, 9:16, dan 1:1
 
 ## Pengalaman Membuat
 
@@ -51,7 +51,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>Export sekali ketuk</h3>
-      Mixdown WAV atau MP3 320 kbps ke Music/NextFL, atau render video MP4 30 fps ke Movies/NextFL. Pilih rasio dulu, batalkan kapan saja.
+      Mixdown WAV atau MP3 (pilih 128, 192, 256, atau 320 kbps, dengan tag gapless jadi tanpa jeda di awal) ke Music/NextFL, atau render video MP4 30 fps ke Movies/NextFL. Pilih rasio dulu, batalkan kapan saja.
     </td>
   </tr>
 </table>

@@ -100,7 +100,7 @@ fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, ca
         TopDialog.BPM -> BpmDialog(bpm, vm::setBpm) { dialog = null }
         TopDialog.EXPORT -> ExportDialog(
             onWav = { dialog = null; vm.exportWav() },
-            onMp3 = { dialog = null; vm.exportMp3() },
+            onMp3 = { bitrate -> dialog = null; vm.exportMp3(bitrate) },
             onVideo = { aspect -> dialog = null; vm.exportVideo(aspect) },
         ) { dialog = null }
         TopDialog.PROJECT -> NewProjectDialog(onConfirm = { dialog = null; vm.newProject() }) { dialog = null }

@@ -10,6 +10,7 @@ class StoragePaths(filesDir: File, cacheDir: File) {
     private val imagesDir = File(filesDir, "images").apply { mkdirs() }
     val projectFile = File(filesDir, "project.json")
     val renderMix = File(cacheDir, "render-mix.pcm")
+    val renderMp3 = File(cacheDir, "render-mix.mp3")
 
     init {
         // Old offline stretch cache
