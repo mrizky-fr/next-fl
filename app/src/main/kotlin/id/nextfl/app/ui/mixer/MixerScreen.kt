@@ -159,10 +159,12 @@ private fun FxBadge(label: String, active: Boolean) {
         color = if (active) Palette.White else Palette.TextMuted,
         fontSize = 8.sp,
         fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        softWrap = false,
         modifier = Modifier
             .clip(RoundedCornerShape(3.dp))
             .background(if (active) Palette.Accent else Palette.Well)
-            .padding(horizontal = 4.dp, vertical = 1.dp),
+            .padding(horizontal = 3.dp, vertical = 1.dp),
     )
 }
 
@@ -170,12 +172,12 @@ private fun FxBadge(label: String, active: Boolean) {
 @Composable
 private fun FxBadges(chain: FxChain) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             FxBadge("EQ", chain.eq.enabled && hasEqChange(chain.eq))
             FxBadge("ST", chain.stereoizer.enabled)
             FxBadge("REV", chain.reverb.enabled && chain.reverb.mix > 0f)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             FxBadge("CMP", chain.compressor.enabled)
             FxBadge("GEQ", chain.graphicEq.enabled && chain.graphicEq.gains.any { it != 0f })
             FxBadge("LV", chain.leveller.enabled && (chain.leveller.gainDb != 0f || chain.leveller.pan != 0f))
