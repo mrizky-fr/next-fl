@@ -160,7 +160,7 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.update(if (settings.streaks) settings.cometCount else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
         ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
-        pendulum.update(frame.beat, frame.beatStrength, settings.pendulumAmount, dt)
+        pendulum.update(frame.beat, settings.pendulumAmount, dt)
         glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)
     }
 
