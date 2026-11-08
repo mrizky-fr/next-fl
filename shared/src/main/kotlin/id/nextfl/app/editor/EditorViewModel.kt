@@ -3,17 +3,10 @@ package id.nextfl.app.editor
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
-import java.util.concurrent.Executors
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import id.nextfl.app.video.VideoRenderer
-import id.nextfl.app.video.VideoPlan
 import id.nextfl.core.pcm.PcmFileWriter
 import id.nextfl.core.model.AspectRatio
 import id.nextfl.core.engine.RenderGraph
-import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.nextfl.core.dsp.BpmDetector
@@ -39,9 +32,11 @@ import id.nextfl.core.util.Ids
 import id.nextfl.app.AppContainer
 import id.nextfl.app.audio.AudioDecodeException
 import id.nextfl.app.audio.LoadedAsset
-import id.nextfl.app.data.ExportTarget
-import id.nextfl.app.data.MediaExporter
 import id.nextfl.app.data.VisualImage
+import id.nextfl.app.platform.ExportTarget
+import id.nextfl.app.platform.Exporter
+import id.nextfl.app.platform.PickedFile
+import id.nextfl.app.platform.VideoRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -74,7 +69,9 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     val library = app.library
     val analysis = app.analysis
     val engine = app.playback.engine
+    val canvasFonts = app.platform.canvasFonts
     val viewport = TimelineViewport()
+    private val exporter = app.platform.exporter
 
     private val mutableUi = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = mutableUi.asStateFlow()
@@ -183,19 +180,19 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     fun setAssetBpm(assetId: String, bpm: Double?) = store.updateAsset(assetId) { it.copy(bpm = bpm?.coerceIn(40.0, 300.0)) }
 
     // Import
-    fun importAudio(context: Context, uris: List<Uri>) {
+    fun importAudio(files: List<PickedFile>) {
         viewModelScope.launch {
-            for (uri in uris) importOne(context, uri)
+            for (file in files) importOne(file)
             app.messages.idle()
         }
     }
 
-    private suspend fun importOne(context: Context, uri: Uri) {
-        val name = displayName(context, uri)
+    private suspend fun importOne(file: PickedFile) {
+        val name = file.name.substringBeforeLast('.').take(MAX_NAME).ifEmpty { "Audio" }
         val assetId = Ids.create("ast")
         try {
             app.messages.busy("Memproses $name", 0f)
-            val decoded = app.decoder.decode(uri, app.paths.asset(assetId)) { progress ->
+            val decoded = app.platform.decoder.decode(file, app.paths.asset(assetId)) { progress ->
                 app.messages.busy("Memproses $name", progress * DECODE_SHARE)
             }
             app.messages.busy("Mendeteksi tempo $name", DECODE_SHARE)
@@ -273,10 +270,10 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     // Export
     fun exportWav() = launchExport { graph, track ->
-        val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.wav", MediaExporter.WAV_MIME))
+        val output = track(exporter.createAudio("nextfl-mix-${timestamp()}.wav", Exporter.WAV_MIME))
         val total = OfflineRenderer.totalFrames(graph)
         withContext(Dispatchers.Default) {
-            WavWriter(app.exporter.openStream(output), AppContainer.SAMPLE_RATE, total).use { writer ->
+            WavWriter(exporter.openStream(output), AppContainer.SAMPLE_RATE, total).use { writer ->
                 OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender mixdown", it) }, isCancelled = { !isActive })
             }
         }
@@ -284,45 +281,40 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun exportMp3(bitrateKbps: Int) = launchExport { graph, track ->
-        val output = track(app.exporter.createAudio("nextfl-mix-${timestamp()}.mp3", MediaExporter.MP3_MIME))
+        val output = track(exporter.createAudio("nextfl-mix-${timestamp()}.mp3", Exporter.MP3_MIME))
         withContext(Dispatchers.Default) {
-            Mp3Writer(app.exporter.openStream(output), AppContainer.SAMPLE_RATE, bitrateKbps, app.paths.renderMp3).use { writer ->
+            Mp3Writer(exporter.openStream(output), AppContainer.SAMPLE_RATE, bitrateKbps, app.paths.renderMp3).use { writer ->
                 OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender MP3", it) }, isCancelled = { !isActive })
             }
         }
         output
     }
 
-    fun exportVideo(aspect: AspectRatio) = launchExport { graph, track ->
-        val mix = app.paths.renderMix
-        try {
-            withContext(Dispatchers.Default) {
-                PcmFileWriter(mix).use { writer ->
-                    OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender audio", it * AUDIO_SHARE) }, isCancelled = { !isActive })
-                }
-            }
-            ensureActive()
-            val plan = withContext(Dispatchers.Default) { VideoPlan.resolve(aspect) }
-            val output = track(app.exporter.createVideo("nextfl-video-${timestamp()}.mp4"))
-            val settings = visualSettings.value
-            val images = background.value to logo.value
-            // GL needs one fixed thread
-            Executors.newSingleThreadExecutor { Thread(it, "video-render") }.asCoroutineDispatcher().use { renderThread ->
-                withContext(renderThread) {
-                    MappedPcmSource(mix, AppContainer.SAMPLE_RATE).use { audio ->
-                        app.exporter.openDescriptor(output).use { descriptor ->
-                            VideoRenderer(plan, audio, settings, images.first, images.second, app.visualTypeface).render(
-                                descriptor.fileDescriptor,
-                                onProgress = { exportBusy("Merender video", AUDIO_SHARE + it * (1 - AUDIO_SHARE)) },
-                                isCancelled = { !isActive },
-                            )
-                        }
+    fun exportVideo(aspect: AspectRatio) {
+        val video = app.platform.video
+        if (video == null) {
+            app.messages.toast("Export video untuk versi ini menyusul")
+            return
+        }
+        launchExport { graph, track ->
+            val mix = app.paths.renderMix
+            try {
+                withContext(Dispatchers.Default) {
+                    PcmFileWriter(mix).use { writer ->
+                        OfflineRenderer.render(graph, AppContainer.SAMPLE_RATE, writer, onProgress = { exportBusy("Merender audio", it * AUDIO_SHARE) }, isCancelled = { !isActive })
                     }
                 }
+                ensureActive()
+                val request = VideoRequest("nextfl-video-${timestamp()}.mp4", mix, aspect, visualSettings.value, background.value, logo.value)
+                video.export(
+                    request,
+                    track,
+                    onProgress = { exportBusy("Merender video", AUDIO_SHARE + it * (1 - AUDIO_SHARE)) },
+                    isCancelled = { !isActive },
+                )
+            } finally {
+                mix.delete()
             }
-            output
-        } finally {
-            mix.delete()
         }
     }
 
@@ -341,15 +333,15 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
                 val graph = RenderGraphBuilder.build(state.doc, state.assets, AppContainer.SAMPLE_RATE, app.library)
                 val output = render(graph) { created -> created.also { target = it } }
                 ensureActive()
-                app.exporter.publish(output)
-                val share = ToastAction("Bagikan") { app.share(output.uri, output.mimeType) }
+                exporter.publish(output)
+                val share = ToastAction(app.platform.shareLabel) { app.share(output) }
                 app.messages.toast("Tersimpan di ${output.location}", ToastTone.SUCCESS, share)
             } catch (cancelled: CancellationException) {
-                target?.let(app.exporter::discard)
+                target?.let(exporter::discard)
                 app.messages.toast("Export dibatalkan")
                 throw cancelled
             } catch (error: Exception) {
-                target?.let(app.exporter::discard)
+                target?.let(exporter::discard)
                 android.util.Log.e(TAG, "Export failed", error)
                 app.messages.toast(exportFailure(error), ToastTone.ERROR)
             } finally {
@@ -386,10 +378,10 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     // Visual template
     fun updateVisual(transform: (VisualSettings) -> VisualSettings) = app.visuals.settings.update(transform)
 
-    fun setImage(kind: VisualImage, uri: Uri) {
+    fun setImage(kind: VisualImage, file: PickedFile) {
         viewModelScope.launch {
             try {
-                app.visuals.image(kind).value = app.repository.importImage(kind, uri)
+                app.visuals.image(kind).value = app.repository.importImage(kind, file)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -405,15 +397,6 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     fun onAppBackgrounded() = app.session.flush()
-
-    private fun displayName(context: Context, uri: Uri): String {
-        val name = runCatching {
-            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-        }.getOrNull()
-        return (name ?: "Audio").substringBeforeLast('.').take(MAX_NAME)
-    }
 
     private fun timestamp() = SimpleDateFormat("yyyyMMdd-HHmm", Locale.ROOT).format(Date())
 

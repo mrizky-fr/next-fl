@@ -7,37 +7,12 @@ import android.media.AudioTrack
 import android.os.Process
 import id.nextfl.core.engine.MixEngine
 
-/** Output sizing shared across sessions. */
-class OutputTuning {
-    // Grows after underruns, persists
-    @Volatile
-    var baseFrames = 0
-
-    @Volatile
-    private var requestedAhead = 0
-
-    @Volatile
-    private var requestedAtNanos = 0L
-
-    /** Visuals need audio rendered ahead. */
-    fun requestAhead(frames: Int) {
-        requestedAhead = frames
-        requestedAtNanos = System.nanoTime()
-    }
-
-    fun aheadFrames(nowNanos: Long): Int = if (nowNanos - requestedAtNanos > AHEAD_EXPIRY_NANOS) 0 else requestedAhead
-
-    private companion object {
-        const val AHEAD_EXPIRY_NANOS = 500_000_000L
-    }
-}
-
 /** One play run, own thread. */
 class PlaybackSession(
     private val engine: MixEngine,
     private val tuning: OutputTuning,
-    private val onFailure: (Exception) -> Unit,
-) : Thread("nextfl-audio") {
+    private val onFailure: (AudioStream, Exception) -> Unit,
+) : Thread("nextfl-audio"), AudioStream {
     private val track: AudioTrack = buildTrack(engine.sampleRate)
     private val timestamp = AudioTimestamp()
     private val capacityFrames = track.bufferCapacityInFrames.coerceAtLeast(BLOCK_FRAMES)
@@ -74,7 +49,7 @@ class PlaybackSession(
                 tuneBuffer()
             }
         } catch (error: Exception) {
-            if (active) onFailure(error)
+            if (active) onFailure(this, error)
         } finally {
             released = true
             runCatching { track.pause() }
@@ -119,8 +94,9 @@ class PlaybackSession(
         pipelineFrames += (beyond - pipelineFrames) * PIPELINE_SMOOTHING
     }
 
-    /** Frame currently being heard. */
-    fun audibleOutputFrame(): Long {
+    override fun begin() = start()
+
+    override fun audibleOutputFrame(): Long {
         if (released) return framesWritten
         val estimate = runCatching {
             if (track.getTimestamp(timestamp)) {
@@ -134,15 +110,14 @@ class PlaybackSession(
     }
 
     // Pause interrupts blocking write
-    fun finish() {
+    override fun finish() {
         active = false
         if (!released) runCatching { track.pause() }
         join(JOIN_TIMEOUT_MS)
     }
 
-    companion object {
-        // Small blocks: edits heard sooner
-        const val BLOCK_FRAMES = 512
+    private companion object {
+        const val BLOCK_FRAMES = AudioStream.BLOCK_FRAMES
         private const val START_BLOCKS = 2
         private const val CAPACITY_BLOCKS = 32
         private const val WARMUP_BLOCKS = 16L

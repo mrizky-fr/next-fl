@@ -1,7 +1,7 @@
 package id.nextfl.app.ui.topbar
 
 import id.nextfl.core.model.AspectRatio
-import id.nextfl.app.video.VideoPlan
+import id.nextfl.app.video.VideoFrames
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -132,7 +132,7 @@ private fun VideoRatioDialog(onBack: () -> Unit, onRender: (AspectRatio) -> Unit
 
 @Composable
 private fun RatioOption(aspect: AspectRatio, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val (width, height) = VideoPlan.frameSize(aspect, NOMINAL_SHORT_SIDE)
+    val (width, height) = VideoFrames.frameSize(aspect, NOMINAL_SHORT_SIDE)
     val ratio = aspect.width.toFloat() / aspect.height
     Column(
         modifier = modifier

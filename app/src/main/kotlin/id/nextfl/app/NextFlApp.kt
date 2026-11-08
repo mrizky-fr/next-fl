@@ -1,6 +1,7 @@
 package id.nextfl.app
 
 import android.app.Application
+import id.nextfl.app.platform.AndroidPlatform
 
 class NextFlApp : Application() {
     lateinit var container: AppContainer
@@ -8,7 +9,7 @@ class NextFlApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainer(AndroidPlatform(this))
         container.session.start()
     }
 }

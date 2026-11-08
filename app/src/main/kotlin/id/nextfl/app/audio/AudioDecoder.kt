@@ -5,13 +5,13 @@ import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.net.Uri
+import id.nextfl.app.platform.AudioDecoding
+import id.nextfl.app.platform.PickedFile
 import id.nextfl.core.pcm.PcmFileWriter
 import id.nextfl.core.pcm.PeakAccumulator
 import id.nextfl.core.pcm.StereoSink
 import id.nextfl.core.pcm.StreamingResampler
 import id.nextfl.core.pcm.TeeSink
-import id.nextfl.core.pcm.WaveformPeaks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -20,18 +20,14 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.coroutines.coroutineContext
 
-class AudioDecodeException(message: String) : Exception(message)
-
-class DecodedAudio(val frames: Int, val peaks: WaveformPeaks)
-
 /** Decodes files to engine PCM. */
-class AudioDecoder(private val context: Context, private val targetRate: Int) {
+class AudioDecoder(private val context: Context, private val targetRate: Int) : AudioDecoding {
 
-    suspend fun decode(uri: Uri, target: File, onProgress: (Float) -> Unit): DecodedAudio = withContext(Dispatchers.IO) {
+    override suspend fun decode(file: PickedFile, target: File, onProgress: (Float) -> Unit): DecodedAudio = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
-            extractor.setDataSource(context, uri, null)
+            extractor.setDataSource(context, file.uri, null)
             val trackIndex = (0 until extractor.trackCount).firstOrNull {
                 extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
             } ?: throw AudioDecodeException("File ini tidak berisi audio")

@@ -6,9 +6,6 @@ import androidx.compose.material.icons.rounded.CropSquare
 import androidx.compose.material.icons.rounded.CropPortrait
 import androidx.compose.material.icons.rounded.Crop169
 import android.graphics.Bitmap
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -48,12 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import id.nextfl.app.ui.theme.Fonts
 import androidx.compose.ui.unit.dp
 import id.nextfl.core.model.AspectRatio
 import id.nextfl.core.model.FxRanges
@@ -61,6 +54,9 @@ import id.nextfl.core.model.SocialPlatform
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.roundToInt
 import id.nextfl.app.data.VisualImage
+import id.nextfl.app.platform.drawingCanvas
+import id.nextfl.app.platform.rememberImagePicker
+import id.nextfl.app.platform.toImageBitmap
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.editor.UiState
 import id.nextfl.app.ui.components.ButtonVariant
@@ -126,8 +122,7 @@ private fun AspectFit(aspect: AspectRatio, content: @Composable () -> Unit) {
 
 @Composable
 fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
-    val context = LocalContext.current
-    val template = remember { PulseRingTemplate(Fonts.bold(context)) }
+    val template = remember { PulseRingTemplate(vm.canvasFonts.bold) }
     LaunchedEffect(background, logo) { template.setImages(background, logo) }
     val tick by rememberFrameTick()
     val last = remember { mutableLongStateOf(0L) }
@@ -136,7 +131,7 @@ fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: 
         val dt = if (last.longValue == 0L) 1 / 60f else ((now - last.longValue) / 1e9f).coerceIn(0f, MAX_FRAME_SECONDS)
         last.longValue = now
         val frame = vm.analysis.next(dt, settings.sensitivity, settings.syncMs)
-        drawIntoCanvas { template.draw(it.nativeCanvas, size.width.toInt(), size.height.toInt(), frame, dt, settings) }
+        drawIntoCanvas { template.draw(it.drawingCanvas(), size.width.toInt(), size.height.toInt(), frame, dt, settings) }
     }
 }
 
@@ -214,7 +209,7 @@ private fun SocialPicker(selected: Set<SocialPlatform>, onToggle: (SocialPlatfor
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SocialPlatform.entries.forEach { platform ->
             val on = platform in selected
-            val bitmap = remember(platform, iconPx) { SocialIconPainter.render(platform, iconPx).asImageBitmap() }
+            val bitmap = remember(platform, iconPx) { SocialIconPainter.render(platform, iconPx).toImageBitmap() }
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -234,15 +229,13 @@ private fun SocialPicker(selected: Set<SocialPlatform>, onToggle: (SocialPlatfor
 
 @Composable
 private fun ImagePickerRow(vm: EditorViewModel, kind: VisualImage, label: String, bitmap: Bitmap?, shape: Shape) {
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let { vm.setImage(kind, it) } }
+    val pickImage = rememberImagePicker { file -> vm.setImage(kind, file) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
         Box(Modifier.size(36.dp).clip(shape).background(Palette.Well)) {
-            bitmap?.let { Image(it.asImageBitmap(), contentDescription = label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+            bitmap?.let { Image(it.toImageBitmap(), contentDescription = label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
         }
         Text(label, style = TextStyles.Body, modifier = Modifier.weight(1f))
-        FlatButton(if (bitmap == null) "Pilih" else "Ganti", Icons.Rounded.AddPhotoAlternate, {
-            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        })
+        FlatButton(if (bitmap == null) "Pilih" else "Ganti", Icons.Rounded.AddPhotoAlternate, pickImage)
         if (bitmap != null) FlatButton("Hapus", Icons.Rounded.Delete, { vm.removeImage(kind) }, variant = ButtonVariant.GHOST)
     }
 }

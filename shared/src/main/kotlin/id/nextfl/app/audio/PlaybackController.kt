@@ -1,13 +1,6 @@
 package id.nextfl.app.audio
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.util.Log
-import androidx.core.content.ContextCompat
 import id.nextfl.core.analysis.AudioFrame
 import id.nextfl.core.analysis.SpectrumAnalyzer
 import id.nextfl.core.engine.MixEngine
@@ -29,7 +22,7 @@ import kotlin.math.roundToLong
 
 /** Transport, graph and focus. */
 class PlaybackController(
-    private val context: Context,
+    private val device: AudioDevice,
     private val store: ProjectStore,
     private val library: AssetLibrary,
     private val scope: CoroutineScope,
@@ -38,15 +31,7 @@ class PlaybackController(
 ) {
     val engine = MixEngine(sampleRate)
     private val tuning = OutputTuning()
-    private val audioManager = context.getSystemService(AudioManager::class.java)
-    private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-        .setAudioAttributes(PlaybackAttributes.music)
-        .setOnAudioFocusChangeListener { change -> if (change < 0) pause() }
-        .build()
-    private val noisyReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = pause()
-    }
-    private var session: PlaybackSession? = null
+    private var session: AudioStream? = null
     private var lastRestartNanos = 0L
     private var pausedFrame = 0L
     private val mutablePlaying = MutableStateFlow(false)
@@ -75,33 +60,26 @@ class PlaybackController(
 
     fun play() {
         if (session != null) return
-        if (audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_FAILED) {
+        if (!device.acquire(::pause)) {
             onError("Audio sedang dipakai aplikasi lain")
             return
         }
         val started = try {
             engine.resetOutputClock(pausedFrame)
-            PlaybackSession(engine, tuning, ::onSessionFailed).also { it.start() }
+            device.open(engine, tuning, ::onSessionFailed).also { it.begin() }
         } catch (error: Exception) {
             Log.e(TAG, "Playback start failed", error)
-            audioManager.abandonAudioFocusRequest(focusRequest)
+            device.release()
             onError("Output audio tidak tersedia")
             return
         }
-        ContextCompat.registerReceiver(
-            context,
-            noisyReceiver,
-            IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
         session = started
         mutablePlaying.value = true
     }
 
     // Restart once, else stop cleanly
-    private fun onSessionFailed(error: Exception) {
+    private fun onSessionFailed(failed: AudioStream, error: Exception) {
         Log.e(TAG, "Audio thread failed", error)
-        val failed = Thread.currentThread()
         scope.launch(Dispatchers.Main) {
             if (session == null || session !== failed) return@launch
             pause()
@@ -120,8 +98,7 @@ class PlaybackController(
         pausedFrame = positionFrames()
         current.finish()
         session = null
-        runCatching { context.unregisterReceiver(noisyReceiver) }
-        audioManager.abandonAudioFocusRequest(focusRequest)
+        device.release()
         mutablePlaying.value = false
     }
 
@@ -186,7 +163,7 @@ class VisualAnalysis(private val playback: PlaybackController) {
     fun next(dt: Float, sensitivity: Float, syncMs: Int): AudioFrame {
         val lookahead = lookaheadFrames(syncMs)
         // Buffer grows so sync holds
-        playback.requestRenderAhead(lookahead.toInt() + PlaybackSession.BLOCK_FRAMES)
+        playback.requestRenderAhead(lookahead.toInt() + AudioStream.BLOCK_FRAMES)
         if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(lookahead), window) else window.fill(0f)
         return analyzer.analyze(window, dt, sensitivity)
     }

@@ -29,20 +29,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import id.nextfl.app.R
+import id.nextfl.app.platform.KeepScreenOn
 import id.nextfl.app.editor.AppView
 import id.nextfl.app.editor.BusyState
 import id.nextfl.app.editor.EditorViewModel
@@ -73,11 +70,7 @@ private fun Editor(vm: EditorViewModel) {
     val state by vm.editor.collectAsState()
     val ui by vm.ui.collectAsState()
     val playing by vm.isPlaying.collectAsState()
-    val view = LocalView.current
-    DisposableEffect(playing) {
-        view.keepScreenOn = playing
-        onDispose { view.keepScreenOn = false }
-    }
+    KeepScreenOn(playing)
     val fullscreenVisual = ui.view == AppView.VISUAL && ui.visualFullscreen
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.displayCutout)) {
         if (!fullscreenVisual) TopBar(vm, ui.view, state.doc.bpm, state.history.canUndo, state.history.canRedo, playing)
@@ -97,7 +90,7 @@ private fun Editor(vm: EditorViewModel) {
 @Composable
 private fun Splash() {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Image(painterResource(R.drawable.ic_logo_glyph), contentDescription = null, modifier = Modifier.size(56.dp))
+        Image(LogoGlyph, contentDescription = null, modifier = Modifier.size(56.dp))
         LinearProgressIndicator(
             color = Palette.Accent,
             trackColor = Palette.Control,

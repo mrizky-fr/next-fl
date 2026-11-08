@@ -1,9 +1,5 @@
 package id.nextfl.app.ui
 
-import android.content.ActivityNotFoundException
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +44,7 @@ import id.nextfl.app.editor.AppView
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.editor.SnapMode
 import id.nextfl.app.editor.UiState
+import id.nextfl.app.platform.rememberAudioPicker
 import id.nextfl.app.ui.components.ButtonVariant
 import id.nextfl.app.ui.components.FlatButton
 import id.nextfl.app.ui.components.IconAction
@@ -66,19 +62,8 @@ private const val ZOOM_STEP = 1.4f
 private const val BOTTOM_BAR_SCALE = 0.8f
 
 @Composable
-fun rememberAudioImporter(vm: EditorViewModel): () -> Unit {
-    val context = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) vm.importAudio(context, uris)
-    }
-    return {
-        try {
-            picker.launch(arrayOf("audio/*"))
-        } catch (missing: ActivityNotFoundException) {
-            vm.showError("Tidak ada aplikasi pemilih file")
-        }
-    }
-}
+fun rememberAudioImporter(vm: EditorViewModel): () -> Unit =
+    rememberAudioPicker(onPicked = vm::importAudio, onUnavailable = { vm.showError("Tidak ada aplikasi pemilih file") })
 
 /** Full-width bar on every tab. */
 @Composable

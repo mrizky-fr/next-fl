@@ -1,9 +1,8 @@
 package id.nextfl.app.data
 
-import android.content.ContentResolver
 import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.net.Uri
+import id.nextfl.app.platform.ImageCodec
+import id.nextfl.app.platform.PickedFile
 import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.ProjectDoc
 import id.nextfl.core.model.VisualSettings
@@ -14,7 +13,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
-import kotlin.math.max
 
 @Serializable
 data class SavedProject(
@@ -28,7 +26,7 @@ data class SavedProject(
     }
 }
 
-class ProjectRepository(private val paths: StoragePaths, private val resolver: ContentResolver) {
+class ProjectRepository(private val paths: StoragePaths, private val images: ImageCodec) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -65,12 +63,11 @@ class ProjectRepository(private val paths: StoragePaths, private val resolver: C
     }
 
     // Old image kept until valid
-    suspend fun importImage(kind: VisualImage, uri: Uri): Bitmap = withContext(Dispatchers.IO) {
+    suspend fun importImage(kind: VisualImage, file: PickedFile): Bitmap = withContext(Dispatchers.IO) {
         val target = paths.image(kind)
         val temp = File(target.path + ".tmp")
         try {
-            resolver.openInputStream(uri)?.use { input -> temp.outputStream().use { input.copyTo(it) } }
-                ?: throw IOException("Gambar tidak bisa dibuka")
+            file.open().use { input -> temp.outputStream().use { input.copyTo(it) } }
             val bitmap = decodeImage(temp) ?: throw IOException("Gambar tidak valid")
             if (!temp.renameTo(target)) {
                 target.delete()
@@ -90,15 +87,7 @@ class ProjectRepository(private val paths: StoragePaths, private val resolver: C
         paths.image(kind).delete()
     }
 
-    private fun decodeImage(file: File): Bitmap? = runCatching {
-        ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
-            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-            val scale = MAX_IMAGE_EDGE.toFloat() / max(info.size.width, info.size.height)
-            if (scale < 1f) decoder.setTargetSize(scaled(info.size.width, scale), scaled(info.size.height, scale))
-        }
-    }.getOrNull()
-
-    private fun scaled(edge: Int, scale: Float): Int = (edge * scale).toInt().coerceAtLeast(1)
+    private fun decodeImage(file: File): Bitmap? = runCatching { images.decode(file, MAX_IMAGE_EDGE) }.getOrNull()
 
     private companion object {
         const val TAG = "ProjectRepository"

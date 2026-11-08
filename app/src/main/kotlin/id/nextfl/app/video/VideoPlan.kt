@@ -41,16 +41,11 @@ class VideoPlan(
             throw IOException("Perangkat tidak mendukung encoder video")
         }
 
-        fun frameSize(aspect: AspectRatio, short: Int): Pair<Int, Int> {
-            val long = even(short * maxOf(aspect.width, aspect.height) / minOf(aspect.width, aspect.height))
-            return if (aspect.width >= aspect.height) long to short else short to long
-        }
+        fun frameSize(aspect: AspectRatio, short: Int): Pair<Int, Int> = VideoFrames.frameSize(aspect, short)
 
         // Hardware encoders first
         private fun encoders(): List<MediaCodecInfo> = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
             .filter { info -> info.isEncoder && info.supportedTypes.any { it.equals(MIME, ignoreCase = true) } }
             .sortedBy { if (it.isHardwareAccelerated) 0 else 1 }
-
-        private fun even(value: Int) = value and 1.inv()
     }
 }

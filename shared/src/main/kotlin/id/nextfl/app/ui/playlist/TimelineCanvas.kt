@@ -14,11 +14,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import id.nextfl.app.ui.theme.Fonts
+import id.nextfl.app.platform.drawingCanvas
 import id.nextfl.core.state.EditorState
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.editor.UiState
@@ -26,8 +24,7 @@ import id.nextfl.app.editor.UiState
 @Composable
 fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing: Boolean, geometry: TimelineGeometry, modifier: Modifier = Modifier) {
     val density = LocalDensity.current.density
-    val context = LocalContext.current
-    val renderer = remember(geometry) { TimelineRenderer(geometry, density, Fonts.semibold(context)) }
+    val renderer = remember(geometry) { TimelineRenderer(geometry, density, vm.canvasFonts.semibold) }
     val scope = rememberCoroutineScope()
     val gestures = remember(geometry) { TimelineGestures(vm, geometry, scope) }
     val livePosition = remember { mutableDoubleStateOf(0.0) }
@@ -68,6 +65,6 @@ fun TimelineCanvas(vm: EditorViewModel, state: EditorState, ui: UiState, playing
             snapGuide = gestures.snapGuide,
             peaks = { id -> libraryVersion.let { vm.library.peaks(id) } },
         )
-        drawIntoCanvas { renderer.draw(it.nativeCanvas, scene) }
+        drawIntoCanvas { renderer.draw(it.drawingCanvas(), scene) }
     }
 }

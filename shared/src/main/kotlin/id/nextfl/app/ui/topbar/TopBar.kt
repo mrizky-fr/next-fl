@@ -35,14 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.nextfl.core.util.TimeFormat
-import id.nextfl.app.R
+import id.nextfl.app.ui.LogoGlyph
 import id.nextfl.app.editor.AppView
 import id.nextfl.app.editor.EditorViewModel
 import id.nextfl.app.ui.components.ButtonVariant
@@ -60,6 +58,7 @@ private enum class TopDialog { BPM, EXPORT, PROJECT }
 
 // Compact header: 25% smaller
 private const val TOP_BAR_SCALE = 0.75f
+private const val APP_NAME = "NextFL"
 
 @Composable
 fun TopBar(vm: EditorViewModel, view: AppView, bpm: Double, canUndo: Boolean, canRedo: Boolean, playing: Boolean) {
@@ -119,9 +118,9 @@ private fun viewIcon(view: AppView) = when (view) {
 private fun AppMark() {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.size(32.dp).clip(RoundedCornerShape(Dimens.Radius)).background(Palette.Accent), contentAlignment = Alignment.Center) {
-            Image(painterResource(R.drawable.ic_logo_glyph), contentDescription = null, modifier = Modifier.size(22.dp))
+            Image(LogoGlyph, contentDescription = null, modifier = Modifier.size(22.dp))
         }
-        Text(stringResource(R.string.app_name), color = Palette.White, fontFamily = Inter, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(APP_NAME, color = Palette.White, fontFamily = Inter, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 

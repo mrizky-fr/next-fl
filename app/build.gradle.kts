@@ -62,6 +62,9 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // UI shared with desktop
+    sourceSets.getByName("main").kotlin.srcDir("../shared/src/main/kotlin")
 }
 
 base {
