@@ -12,6 +12,11 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Downloads JDK with jpackage
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -21,4 +26,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "NextFL"
-include(":app", ":core")
+include(":app", ":core", ":desktop")

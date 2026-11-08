@@ -68,6 +68,8 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
 2. Buka file yang terunduh. Bila diminta, izinkan pemasangan dari sumber ini.
 3. Pasang, buka **NextFL**, tekan **+ Audio**, dan mulai meracik.
 
+Versi **Windows** (installer MSI) dibangun dari kode yang sama dengan tampilan yang sama persis. Tombol unduhnya menyusul.
+
 ## Dibangun Dengan
 
 <p align="center">
@@ -76,7 +78,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
   <img src="https://skillicons.dev/icons?i=gradle" alt="Gradle" title="Gradle" width="48" height="48" />
 </p>
 
-<p align="center"><sub>Kotlin · Jetpack Compose · AudioTrack · MediaCodec · OpenGL ES · Font Inter</sub></p>
+<p align="center"><sub>Kotlin · Jetpack Compose · Compose Desktop · Skia · AudioTrack · MediaCodec · OpenGL ES · Font Inter</sub></p>
 
 <details>
 <summary><b>Untuk developer</b></summary>
@@ -92,12 +94,23 @@ $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 
 APK rilis (R8 dan resource shrinking aktif) dibuat di `app/build/outputs/apk/release/NextFL-release.apk`, lalu disalin menimpa [`release/NextFL.apk`](release/NextFL.apk) untuk tombol unduh. `versionCode` diambil dari jumlah commit (`git rev-list --count HEAD`) dan `versionName` menjadi `0.1.<jumlah commit>`, jadi setiap perubahan otomatis menaikkan versi. Build debug tetap tersedia lewat `:app:assembleDebug`.
 
-Project terbagi dua modul:
+Project terbagi empat bagian:
 
 | Modul | Isi |
 |---|---|
-| `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA real-time, efek DJ, FFT), mix engine, deteksi BPM dan beat. Bisa dipakai ulang untuk versi desktop. |
-| `app/` | Android: decode audio, playback `AudioTrack`, penyimpanan proyek, UI Compose, template visual, dan render video H.264 + AAC. |
+| `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA real-time, efek DJ, FFT), mix engine, deteksi BPM dan beat. |
+| `shared/` | Folder sumber yang dikompilasi oleh `app/` dan `desktop/`: semua layar Compose, ViewModel, playback controller, penyimpanan proyek, dan template visual (`android.graphics`). Hal yang beda per OS lewat kontrak di `shared/.../platform/Platform.kt`. |
+| `app/` | Android: decode `MediaCodec`, playback `AudioTrack` + audio focus, export MediaStore, pemilih file, dan render video H.264 + AAC. |
+| `desktop/` | Windows (Compose Desktop): decode MP3 (JLayer), WAV/AIFF (Java Sound), format lain lewat `ffmpeg` bila terpasang, playback Java Sound, export ke folder Music, dialog file Windows (FileKit), dan lapisan `android.graphics` di atas Skia supaya visualizer dan timeline digambar oleh kode yang sama. |
+
+Versi Windows dijalankan dan dikemas dengan:
+
+```powershell
+.\gradlew.bat :desktop:test :desktop:run
+.\gradlew.bat :desktop:packageReleaseMsi
+```
+
+Installer dibuat di `desktop/build/compose/binaries/main-release/msi/`. Gradle mengunduh JDK 21 sekali (lewat toolchain foojay) karena `jpackage` tidak ada di JBR Android Studio, dan WiX diunduh otomatis oleh plugin Compose. ProGuard hanya membuang kelas yang tidak dipakai (tanpa obfuscation). Untuk mengecek build rilis tanpa membuka jendela: `NextFL.exe --self-test <file.mp3> <laporan.txt>`.
 
 Tidak ada API key. Kredensial tanda tangan rilis dibaca dari environment variable, atau dari `keystore.properties` bila variabelnya tidak diset. Salin [`keystore.properties.example`](keystore.properties.example) menjadi `keystore.properties`, lalu isi nilainya. Keystore dan file itu tidak di-commit. Tanpa keystore, build rilis tetap jalan tetapi APK-nya tidak bertanda tangan.
 
@@ -114,7 +127,7 @@ Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
 ## Catatan
 
-APK di tombol unduh adalah **build rilis** bertanda tangan, bukan rilis Play Store. File ini selalu ditimpa versi terbaru; versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)).
+APK di tombol unduh adalah **build rilis** bertanda tangan, bukan rilis Play Store. File ini selalu ditimpa versi terbaru; versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)). Versi Windows memakai [JLayer](http://www.javazoom.net/javalayer/javalayer.html) untuk decode MP3 (juga LGPL 2.1, teks lisensi yang sama), [FileKit](https://github.com/vinceglb/filekit) (MIT), dan JNA (Apache 2.0).
 
 ## Pembuat
 

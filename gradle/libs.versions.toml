@@ -9,6 +9,12 @@ coroutines = "1.11.0"
 serialization = "1.12.0"
 junit = "5.13.4"
 jump3r = "1.0.5"
+composeMultiplatform = "1.12.2"
+desktopMaterial3 = "1.9.0"
+desktopIcons = "1.7.3"
+desktopLifecycle = "2.11.0"
+jlayer = "1.0.1"
+filekit = "0.17.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,9 +37,16 @@ kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.re
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 jump3r = { group = "de.sciss", name = "jump3r", version.ref = "jump3r" }
+desktop-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "desktopMaterial3" }
+desktop-icons = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "desktopIcons" }
+desktop-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "desktopLifecycle" }
+kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "coroutines" }
+jlayer = { group = "javazoom", name = "jlayer", version.ref = "jlayer" }
+filekit-dialogs = { group = "io.github.vinceglb", name = "filekit-dialogs", version.ref = "filekit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
