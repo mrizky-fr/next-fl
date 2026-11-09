@@ -88,3 +88,13 @@ compose.desktop {
         }
     }
 }
+
+// Extract and run, no install
+val packageReleasePortable by tasks.registering(Zip::class) {
+    group = "compose desktop"
+    description = "Zips the release app image as a portable build."
+    dependsOn("createReleaseDistributable")
+    from(layout.buildDirectory.dir("compose/binaries/main-release/app"))
+    archiveFileName.set("NextFL-Portable.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main-release/portable"))
+}
