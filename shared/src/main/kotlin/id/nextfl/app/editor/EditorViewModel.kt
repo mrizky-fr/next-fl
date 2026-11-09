@@ -137,6 +137,11 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
 
     fun updateDj(key: String, transform: (DjSettings) -> DjSettings) = store.change("dj:$key") { it.copy(dj = transform(it.dj)) }
 
+    // Live only, never saved
+    fun setGate(beats: Double) {
+        engine.gateBeats = beats
+    }
+
     // Synced clips move project BPM
     fun setDeckRate(clipId: String, rate: Double) {
         val state = store.current

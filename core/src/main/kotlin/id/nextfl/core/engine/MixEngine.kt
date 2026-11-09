@@ -1,5 +1,6 @@
 package id.nextfl.core.engine
 
+import id.nextfl.core.dsp.BeatGate
 import id.nextfl.core.dsp.DjEffects
 import id.nextfl.core.dsp.Limiter
 import id.nextfl.core.pcm.PcmSource
@@ -32,6 +33,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private val limiter = Limiter(sampleRate)
     private var masterChain = FxChainProcessor(sampleRate)
     private var djEffects = DjEffects(sampleRate)
+    private val gate = BeatGate(sampleRate)
     private val masterHistory = PeakHistory()
     private val grains = GrainReader(sampleRate)
     private val grainStates = HashMap<String, GrainReader.State>()
@@ -48,6 +50,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     /** Live playback wraps at song end. */
     @Volatile
     var looping = false
+
+    /** Held gate length in beats. */
+    @Volatile
+    var gateBeats = BeatGate.OFF
 
     val currentGraph: RenderGraph get() = graph
 
@@ -198,6 +204,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         }
         masterChain.process(current.masterFx, masterL, masterR, frames)
         djEffects.process(current.dj, current.bpm, masterL, masterR, frames)
+        gate.process(gateBeats, current.bpm, songFrame, masterL, masterR, frames)
         if (!masterIsFinite(frames)) recoverMaster(frames)
         val step = (current.masterGain - masterGain) / frames
         for (i in 0 until frames) {

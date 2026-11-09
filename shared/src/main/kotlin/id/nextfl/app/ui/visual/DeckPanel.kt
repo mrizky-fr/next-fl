@@ -1,6 +1,9 @@
 package id.nextfl.app.ui.visual
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -11,19 +14,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -42,8 +50,10 @@ import id.nextfl.app.ui.components.PanelHeader
 import id.nextfl.app.ui.components.rememberFrameTick
 import id.nextfl.app.ui.playlist.ClipLevelSection
 import id.nextfl.app.ui.playlist.TempoSection
+import id.nextfl.app.ui.theme.Dimens
 import id.nextfl.app.ui.theme.Palette
 import id.nextfl.app.ui.theme.TextStyles
+import id.nextfl.core.dsp.BeatGate
 import id.nextfl.core.edit.clipSpan
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.DjSettings
@@ -55,6 +65,7 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 private val FX_ROW_HEIGHT = 84.dp
+private val GATE_HEIGHT = 30.dp
 private val FX_ROW_WIDTH = 248.dp
 private val MAX_WHEEL = 260.dp
 private val DECK_GAP = 8.dp
@@ -71,11 +82,12 @@ fun DeckPanel(vm: EditorViewModel, state: EditorState, playing: Boolean, modifie
     val clip = deckClip(state)
     Row(modifier.padding(DECK_GAP), horizontalArrangement = Arrangement.spacedBy(DECK_GAP)) {
         BoxWithConstraints(Modifier.width(FX_ROW_WIDTH).fillMaxHeight()) {
-            val wheel = min(min(maxWidth, maxHeight - FX_ROW_HEIGHT - DECK_GAP), MAX_WHEEL)
+            val wheel = min(min(maxWidth, maxHeight - FX_ROW_HEIGHT - GATE_HEIGHT - DECK_GAP * 2), MAX_WHEEL)
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(DECK_GAP)) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     if (wheel > 40.dp) JogWheel(vm, state, clip, playing, Modifier.size(wheel))
                 }
+                GateRow(vm)
                 DjFxRow(vm, state.doc.dj)
             }
         }
@@ -185,6 +197,67 @@ private fun resetDeckRate(vm: EditorViewModel, clip: Clip) {
     vm.endGesture()
 }
 
+// Last held pad wins
+@Composable
+private fun GateRow(vm: EditorViewModel) {
+    val held = remember { mutableStateListOf<Double>() }
+    DisposableEffect(Unit) { onDispose { vm.setGate(BeatGate.OFF) } }
+    Row(
+        Modifier.width(FX_ROW_WIDTH).height(GATE_HEIGHT),
+        horizontalArrangement = Arrangement.spacedBy(GATE_GAP),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("GATE", style = TextStyles.Label)
+        GATE_DIVISIONS.forEach { (beats, label) ->
+            GatePad(
+                label = label,
+                active = held.lastOrNull() == beats,
+                onPress = {
+                    held.remove(beats)
+                    held.add(beats)
+                    vm.setGate(beats)
+                },
+                onRelease = {
+                    held.remove(beats)
+                    vm.setGate(held.lastOrNull() ?: BeatGate.OFF)
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+// On while finger stays down
+@Composable
+private fun GatePad(label: String, active: Boolean, onPress: () -> Unit, onRelease: () -> Unit, modifier: Modifier) {
+    val press by rememberUpdatedState(onPress)
+    val release by rememberUpdatedState(onRelease)
+    Box(
+        modifier
+            .fillMaxHeight()
+            .clip(GATE_SHAPE)
+            .background(if (active) Palette.Accent else Palette.Control)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    press()
+                    try {
+                        do {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                            change.consume()
+                        } while (change.pressed)
+                    } finally {
+                        release()
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = if (active) Palette.White else Palette.TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
 @Composable
 private fun DjFxRow(vm: EditorViewModel, dj: DjSettings) {
     Row(Modifier.width(FX_ROW_WIDTH), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -196,6 +269,9 @@ private fun DjFxRow(vm: EditorViewModel, dj: DjSettings) {
 }
 
 private val KNOB = 38.dp
+private val GATE_GAP = 4.dp
+private val GATE_SHAPE = RoundedCornerShape(Dimens.RadiusSmall)
+private val GATE_DIVISIONS = listOf(1.0 to "1/1", 0.5 to "1/2", 0.25 to "1/4", 0.125 to "1/8", 0.0625 to "1/16")
 private val PLATTER = Color(0xFF0B0C0E)
 private val GROOVE = Color(0x14FFFFFF)
 private const val GROOVES = 5

@@ -47,7 +47,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
   <tr>
     <td width="50%" valign="top">
       <h3>Mode Ngonten</h3>
-      Satu track di atas, deck DJ di bawahnya: jog wheel untuk mengatur BPM, knob Filter, Echo, Flanger, dan Crush, plus pengaturan speed dan nada klip. Preview visual kotak di kanan.
+      Satu track di atas, deck DJ di bawahnya: jog wheel untuk mengatur BPM, pad Gate 1/1–1/16 yang aktif selama ditahan, knob Filter, Echo, Flanger, dan Crush, plus pengaturan speed dan nada klip. Preview visual kotak di kanan.
     </td>
     <td width="50%" valign="top">
       <h3>Export sekali ketuk</h3>

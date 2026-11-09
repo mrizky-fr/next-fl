@@ -58,6 +58,26 @@ class EngineTest {
     }
 
     @Test
+    fun liveGateChopsOnBeatGrid() {
+        val engine = MixEngine(rate, 1024)
+        engine.setGraph(graph(startBeat = 0.0))
+        engine.resetOutputClock(0)
+        engine.gateBeats = 1.0
+        val beat = rate / 2
+        val left = FloatArray(beat)
+        val out = FloatArray(2048)
+        var done = 0
+        while (done < beat) {
+            val count = minOf(1024, beat - done)
+            engine.renderInterleaved(out, count)
+            for (i in 0 until count) left[done + i] = out[2 * i]
+            done += count
+        }
+        assertTrue(left.copyOfRange(beat / 8, beat * 3 / 8).maxOf { abs(it) } > 0.3f, "open half silent")
+        assertTrue(left.copyOfRange(beat * 5 / 8, beat * 7 / 8).maxOf { abs(it) } < 1e-3f, "closed half audible")
+    }
+
+    @Test
     fun mutedTrackIsSilent() {
         assertTrue(render(graph(mute = true)).all { it == 0f })
     }
