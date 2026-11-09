@@ -54,7 +54,8 @@ class OffscreenRenderTest {
             frame.beat = onBeat
             frame.beatStrength = if (onBeat) 1f else 0f
             frame.kick = if (i % BEAT_FRAMES < 6) 0.9f else 0f
-            frame.bass = if (i % BEAT_FRAMES < 10) 0.8f else 0.1f
+            frame.low = if (i % BEAT_FRAMES < 10) 0.8f else 0.1f
+            frame.drive = frame.low
             frame.energy = 0.5f
             template.draw(canvas, width, height, frame, 1f / 60, settings)
         }

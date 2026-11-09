@@ -166,7 +166,7 @@ class VisualAnalysis(private val playback: PlaybackController) {
         // Buffer grows so sync holds
         playback.requestRenderAhead(lookahead.toInt() + AudioStream.BLOCK_FRAMES)
         if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(lookahead), window) else window.fill(0f)
-        return analyzer.analyze(window, dt, settings.sensitivity, settings.beatBass, settings.beatMid, settings.beatHigh)
+        return analyzer.analyze(window, dt, settings.sensitivity, settings.beatLow, settings.beatMid, settings.beatHigh)
     }
 
     private fun lookaheadFrames(syncMs: Int): Long = syncMs.coerceAtLeast(0).toLong() * playback.engine.sampleRate / MILLIS_PER_SECOND

@@ -82,7 +82,7 @@ class VideoRenderer(
         for (index in 0 until total) {
             if (isCancelled()) return false
             val sample = (index.toLong() * audio.sampleRate / VideoPlan.FPS).toInt()
-            val frame = analyzer.analyze(fillWindow(sample + lookaheadFrames), dt, settings.sensitivity, settings.beatBass, settings.beatMid, settings.beatHigh)
+            val frame = analyzer.analyze(fillWindow(sample + lookaheadFrames), dt, settings.sensitivity, settings.beatLow, settings.beatMid, settings.beatHigh)
             val canvas = bridge.canvasSurface.lockHardwareCanvas()
             canvas.drawColor(Color.BLACK)
             template.draw(canvas, plan.width, plan.height, frame, dt, settings)

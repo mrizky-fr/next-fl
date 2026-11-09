@@ -15,9 +15,9 @@ import kotlin.math.sqrt
 /** Audio features for visuals. */
 class AudioFrame {
     val bands = FloatArray(SpectrumAnalyzer.BAND_COUNT)
-    var bass = 0f
+    var low = 0f
     var mid = 0f
-    var treble = 0f
+    var high = 0f
 
     // Band levels mixed by weight
     var drive = 0f
@@ -36,10 +36,10 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
     private val levels = FloatArray(fftSize / 2)
     private val binHz = sampleRate.toFloat() / fftSize
     private val bandBins = logBands()
-    private val bassBins = bins(BASS_LOW, BASS_HIGH)
-    private val midBins = bins(MID_LOW, MID_HIGH)
-    private val trebleBins = bins(TREBLE_LOW, TREBLE_HIGH)
-    private val bassTracker = BeatTracker()
+    private val lowBins = bins(LOW_FROM, LOW_TO)
+    private val midBins = bins(MID_FROM, MID_TO)
+    private val highBins = bins(HIGH_FROM, HIGH_TO)
+    private val lowTracker = BeatTracker()
     private val midTracker = BeatTracker()
     private val highTracker = BeatTracker()
     private var time = 0.0
@@ -47,7 +47,7 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
     val frame = AudioFrame()
 
     /** Expects newest fftSize mono samples. */
-    fun analyze(samples: FloatArray, dt: Float, sensitivity: Float, bass: Float = 1f, mid: Float = 0f, high: Float = 0f): AudioFrame {
+    fun analyze(samples: FloatArray, dt: Float, sensitivity: Float, low: Float = 1f, mid: Float = 0f, high: Float = 0f): AudioFrame {
         computeLevels(samples)
         var total = 0f
         bandBins.forEachIndexed { index, range ->
@@ -55,12 +55,12 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
             total += frame.bands[index]
         }
         frame.energy = total / BAND_COUNT
-        frame.bass = average(bassBins)
+        frame.low = average(lowBins)
         frame.mid = average(midBins)
-        frame.treble = average(trebleBins)
-        frame.drive = mix(bass, mid, high)
+        frame.high = average(highBins)
+        frame.drive = mix(low, mid, high)
         time += dt
-        val strength = bandBeats(dt.toDouble(), sensitivity, bass, mid, high)
+        val strength = bandBeats(dt.toDouble(), sensitivity, low, mid, high)
         frame.beat = strength >= MIN_WEIGHTED && time - lastBeat > MERGE_SECONDS
         frame.beatStrength = if (frame.beat) strength else 0f
         if (frame.beat) lastBeat = time
@@ -69,22 +69,22 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
     }
 
     // Strongest weighted hit this frame
-    private fun bandBeats(dt: Double, sensitivity: Float, bass: Float, mid: Float, high: Float): Float {
-        val low = bassTracker.update(power(bassBins), dt, sensitivity)
+    private fun bandBeats(dt: Double, sensitivity: Float, low: Float, mid: Float, high: Float): Float {
+        val bottom = lowTracker.update(power(lowBins), dt, sensitivity)
         val middle = midTracker.update(power(midBins), dt, sensitivity)
-        val top = highTracker.update(power(trebleBins), dt, sensitivity)
+        val top = highTracker.update(power(highBins), dt, sensitivity)
         var strength = 0f
-        if (low.beat) strength = max(strength, low.strength * bass)
+        if (bottom.beat) strength = max(strength, bottom.strength * low)
         if (middle.beat) strength = max(strength, middle.strength * mid)
         if (top.beat) strength = max(strength, top.strength * high)
         return strength
     }
 
-    // Bass alone when weights off
-    private fun mix(bass: Float, mid: Float, high: Float): Float {
-        val total = bass + mid + high
-        if (total < MIN_WEIGHTED) return frame.bass
-        return (frame.bass * bass + frame.mid * mid + frame.treble * high) / total
+    // Low alone when weights off
+    private fun mix(low: Float, mid: Float, high: Float): Float {
+        val total = low + mid + high
+        if (total < MIN_WEIGHTED) return frame.low
+        return (frame.low * low + frame.mid * mid + frame.high * high) / total
     }
 
     // Mirrors Web Audio analyser scaling
@@ -134,12 +134,13 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
         const val BAND_COUNT = 64
         private const val BAND_MIN_HZ = 30f
         private const val BAND_MAX_HZ = 14_000f
-        private const val BASS_LOW = 35f
-        private const val BASS_HIGH = 150f
-        private const val MID_LOW = 250f
-        private const val MID_HIGH = 2000f
-        private const val TREBLE_LOW = 4000f
-        private const val TREBLE_HIGH = 12_000f
+        // Contiguous: low includes bass
+        private const val LOW_FROM = 30f
+        private const val LOW_TO = 250f
+        private const val MID_FROM = 250f
+        private const val MID_TO = 4000f
+        private const val HIGH_FROM = 4000f
+        private const val HIGH_TO = 14_000f
         private const val MIN_DB = -90f
         private const val MAX_DB = -20f
         private const val SMOOTHING = 0.2f

@@ -33,13 +33,13 @@ class VisualSettingsTest {
     }
 
     @Test
-    fun beatBandsAreClampedAndOldProjectsFollowBass() {
-        val clamped = Sanitize.visual(VisualSettings(beatBass = 2f, beatMid = -1f, beatHigh = 0.3f))
-        assertEquals(1f, clamped.beatBass)
+    fun beatBandsAreClampedAndOldProjectsFollowLow() {
+        val clamped = Sanitize.visual(VisualSettings(beatLow = 2f, beatMid = -1f, beatHigh = 0.3f))
+        assertEquals(1f, clamped.beatLow)
         assertEquals(0f, clamped.beatMid)
         assertEquals(0.3f, clamped.beatHigh)
         val old = Json { ignoreUnknownKeys = true }.decodeFromString(VisualSettings.serializer(), """{"glitchAmount":0.3}""")
-        assertEquals(1f, old.beatBass)
+        assertEquals(1f, old.beatLow)
         assertEquals(0f, old.beatMid)
         assertEquals(0f, old.beatHigh)
     }

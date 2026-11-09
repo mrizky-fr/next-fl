@@ -41,7 +41,7 @@ data class VisualSettings(
     val cometGlare: Float = DEFAULT_GLARE,
     val glitchGlare: Float = DEFAULT_GLARE,
     val hillGlare: Float = DEFAULT_GLARE,
-    val beatBass: Float = 1f,
+    val beatLow: Float = 1f,
     val beatMid: Float = 0f,
     val beatHigh: Float = 0f,
     val showSocial: Boolean = false,

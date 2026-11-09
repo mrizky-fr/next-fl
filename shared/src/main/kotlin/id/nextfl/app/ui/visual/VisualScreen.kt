@@ -190,7 +190,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
         }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
-            ValueSlider("Bass", settings.beatBass, FxRanges.UNIT, { v -> update { it.copy(beatBass = v) } }, ::formatIntensity)
+            ValueSlider("Low", settings.beatLow, FxRanges.UNIT, { v -> update { it.copy(beatLow = v) } }, ::formatIntensity)
             ValueSlider("Mid", settings.beatMid, FxRanges.UNIT, { v -> update { it.copy(beatMid = v) } }, ::formatIntensity)
             ValueSlider("High", settings.beatHigh, FxRanges.UNIT, { v -> update { it.copy(beatHigh = v) } }, ::formatIntensity)
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })

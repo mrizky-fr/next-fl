@@ -15,7 +15,7 @@ class BeatDetectionTest {
 
     private class Run(val beats: Int, val maxStrength: Float)
 
-    private fun detect(signal: FloatArray, bass: Float = 1f, mid: Float = 0f, high: Float = 0f): Run {
+    private fun detect(signal: FloatArray, low: Float = 1f, mid: Float = 0f, high: Float = 0f): Run {
         val analyzer = SpectrumAnalyzer(rate)
         val window = FloatArray(analyzer.fftSize)
         var beats = 0
@@ -23,7 +23,7 @@ class BeatDetectionTest {
         var start = 0
         while (start + window.size < signal.size) {
             signal.copyInto(window, 0, start, start + window.size)
-            val frame = analyzer.analyze(window, hop.toFloat() / rate, 1f, bass, mid, high)
+            val frame = analyzer.analyze(window, hop.toFloat() / rate, 1f, low, mid, high)
             if (frame.beat) {
                 beats++
                 strongest = max(strongest, frame.beatStrength)
@@ -33,8 +33,8 @@ class BeatDetectionTest {
         return Run(beats, strongest)
     }
 
-    // Kick every gap seconds
-    private fun kicks(gapSeconds: Double, seconds: Double): FloatArray {
+    // Decaying tone every gap seconds
+    private fun kicks(gapSeconds: Double, seconds: Double, frequency: Double = 55.0, amplitude: Double = 1.0): FloatArray {
         val data = FloatArray((seconds * rate).toInt())
         val length = (rate * 0.2).toInt()
         var start = 0.0
@@ -43,7 +43,7 @@ class BeatDetectionTest {
                 val at = start.toInt() + i
                 if (at >= data.size) break
                 val t = i.toDouble() / rate
-                data[at] += (sin(2 * PI * 55 * t) * exp(-t * 25)).toFloat()
+                data[at] += (amplitude * sin(2 * PI * frequency * t) * exp(-t * 25)).toFloat()
             }
             start += gapSeconds * rate
         }
@@ -57,6 +57,18 @@ class BeatDetectionTest {
     }
 
     @Test
+    fun lowBandIncludesLowMids() {
+        val beats = detect(kicks(0.5, 3.0, frequency = 200.0, amplitude = 0.5)).beats
+        assertTrue(beats >= 4, "200 Hz hits $beats of 6")
+    }
+
+    @Test
+    fun midBandIncludesUpperMids() {
+        val beats = detect(kicks(0.5, 3.0, frequency = 3000.0, amplitude = 0.3), low = 0f, mid = 1f).beats
+        assertTrue(beats >= 4, "3 kHz hits $beats of 6")
+    }
+
+    @Test
     fun steadyToneIsNotABeat() {
         val beats = detect(TestSignals.sine(55.0, 2.0, rate, 0.8f)).beats
         assertTrue(beats <= 1, "beats $beats")
@@ -65,18 +77,18 @@ class BeatDetectionTest {
     @Test
     fun highWeightAddsHats() {
         val loop = TestSignals.drumLoop(120.0, 4.0, rate)
-        val bassOnly = detect(loop).beats
+        val lowOnly = detect(loop).beats
         val withHats = detect(loop, high = 1f).beats
-        assertTrue(bassOnly in 6..9, "bass beats $bassOnly")
+        assertTrue(lowOnly in 6..9, "low beats $lowOnly")
         assertTrue(withHats >= 13, "kick plus hat beats $withHats")
     }
 
     @Test
     fun weightScalesStrength() {
         val loop = TestSignals.drumLoop(120.0, 4.0, rate)
-        val half = detect(loop, bass = 0.5f)
+        val half = detect(loop, low = 0.5f)
         assertTrue(half.beats > 0)
         assertTrue(half.maxStrength <= 0.5f, "strength ${half.maxStrength}")
-        assertEquals(0, detect(loop, bass = 0f).beats)
+        assertEquals(0, detect(loop, low = 0f).beats)
     }
 }

@@ -108,7 +108,7 @@ object Sanitize {
         cometGlare = settings.cometGlare.coerceIn(FxRanges.UNIT),
         glitchGlare = settings.glitchGlare.coerceIn(FxRanges.UNIT),
         hillGlare = settings.hillGlare.coerceIn(FxRanges.UNIT),
-        beatBass = settings.beatBass.coerceIn(FxRanges.UNIT),
+        beatLow = settings.beatLow.coerceIn(FxRanges.UNIT),
         beatMid = settings.beatMid.coerceIn(FxRanges.UNIT),
         beatHigh = settings.beatHigh.coerceIn(FxRanges.UNIT),
         particleColor = if (settings.particleColor == VisualSettings.LEGACY_PARTICLE) VisualSettings.WHITE else settings.particleColor,
