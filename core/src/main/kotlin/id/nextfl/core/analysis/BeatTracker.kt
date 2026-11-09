@@ -5,29 +5,53 @@ import kotlin.math.min
 
 data class BeatResult(val beat: Boolean, val strength: Float)
 
-/** Adaptive bass-energy beat detector. */
+/** Onset picker: rise from valley. */
 class BeatTracker {
     private val times = ArrayDeque<Double>()
     private val values = ArrayDeque<Double>()
     private var sum = 0.0
     private var time = 0.0
     private var lastBeat = Double.NEGATIVE_INFINITY
+    private var armed = true
+    private var valley = Double.MAX_VALUE
+    private var peak = 0.0
 
     fun update(energy: Double, dt: Double, sensitivity: Float): BeatResult {
         time += dt
         val average = if (values.isEmpty()) 0.0 else sum / values.size
-        val threshold = BASE_THRESHOLD + SENSITIVITY_SPAN / max(0.1f, sensitivity)
-        val isBeat = values.size >= MIN_HISTORY_FRAMES &&
+        val gentle = max(MIN_SENSITIVITY, sensitivity)
+        val loud = LOUD_BASE + LOUD_SPAN / gentle
+        val rise = 1.0 + RISE_SPAN / gentle
+        val isBeat = armed &&
+            values.size >= MIN_HISTORY_FRAMES &&
             energy > MIN_ENERGY &&
-            energy > average * threshold &&
+            energy > average * loud &&
+            energy > valley * rise &&
             time - lastBeat > MIN_BEAT_INTERVAL
-
         push(energy)
-        if (!isBeat) return NO_BEAT
+        if (!isBeat) {
+            track(energy)
+            return NO_BEAT
+        }
         lastBeat = time
+        armed = false
+        peak = energy
         val ratio = energy / max(average, MIN_ENERGY)
-        val strength = min(1.0, max(MIN_STRENGTH, (ratio - threshold) / threshold + STRENGTH_BIAS))
+        val strength = min(1.0, max(MIN_STRENGTH, (ratio - loud) / loud + STRENGTH_BIAS))
         return BeatResult(true, strength.toFloat())
+    }
+
+    // Re-arms once level dips
+    private fun track(energy: Double) {
+        if (armed) {
+            valley = min(valley, energy)
+            return
+        }
+        peak = max(peak, energy)
+        if (energy < peak * REARM_DIP) {
+            armed = true
+            valley = energy
+        }
     }
 
     private fun push(energy: Double) {
@@ -43,9 +67,12 @@ class BeatTracker {
     private companion object {
         const val HISTORY_SECONDS = 0.9
         const val MIN_HISTORY_FRAMES = 8
-        const val MIN_BEAT_INTERVAL = 0.22
-        const val BASE_THRESHOLD = 1.0
-        const val SENSITIVITY_SPAN = 0.4
+        const val MIN_BEAT_INTERVAL = 0.09
+        const val MIN_SENSITIVITY = 0.1f
+        const val LOUD_BASE = 0.6
+        const val LOUD_SPAN = 0.3
+        const val RISE_SPAN = 0.5
+        const val REARM_DIP = 0.7
         const val MIN_ENERGY = 3e-5
         const val MIN_STRENGTH = 0.45
         const val STRENGTH_BIAS = 0.4

@@ -33,6 +33,18 @@ class VisualSettingsTest {
     }
 
     @Test
+    fun beatBandsAreClampedAndOldProjectsFollowBass() {
+        val clamped = Sanitize.visual(VisualSettings(beatBass = 2f, beatMid = -1f, beatHigh = 0.3f))
+        assertEquals(1f, clamped.beatBass)
+        assertEquals(0f, clamped.beatMid)
+        assertEquals(0.3f, clamped.beatHigh)
+        val old = Json { ignoreUnknownKeys = true }.decodeFromString(VisualSettings.serializer(), """{"glitchAmount":0.3}""")
+        assertEquals(1f, old.beatBass)
+        assertEquals(0f, old.beatMid)
+        assertEquals(0f, old.beatHigh)
+    }
+
+    @Test
     fun socialSettingsSurviveRoundTrip() {
         val json = Json { ignoreUnknownKeys = true }
         val original = VisualSettings(showSocial = true, socialUsername = "@djkyy", socialPlatforms = setOf(SocialPlatform.TIKTOK, SocialPlatform.SPOTIFY))

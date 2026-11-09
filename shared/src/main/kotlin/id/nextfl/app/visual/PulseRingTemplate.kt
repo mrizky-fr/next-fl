@@ -144,7 +144,7 @@ class PulseRingTemplate(typeface: Typeface) {
         react(frame, dt, settings)
         shakeX = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
         shakeY = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
-        zoom = 1f + frame.bass * 0.03f * settings.sensitivity + frame.kick * 0.02f
+        zoom = 1f + frame.drive * 0.03f * settings.sensitivity + frame.kick * 0.02f
         update(frame, dt, settings)
         if (glitch.isSplitting) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawScene) else scene(canvas)
         glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), settings.glitchGlare, drawScene)
@@ -158,7 +158,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private fun update(frame: AudioFrame, dt: Float, settings: VisualSettings) {
         particles.update(settings.particleCount, dt, frame.energy, frame.kick)
         comets.update(if (settings.streaks) settings.cometCount else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
-        if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.bass, dt)
+        if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.drive, dt)
         ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
         pendulum.update(frame.beat, settings.pendulumAmount, dt)
         glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)

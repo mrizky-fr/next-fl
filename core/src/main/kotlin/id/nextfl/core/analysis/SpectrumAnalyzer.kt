@@ -18,6 +18,9 @@ class AudioFrame {
     var bass = 0f
     var mid = 0f
     var treble = 0f
+
+    // Band levels mixed by weight
+    var drive = 0f
     var energy = 0f
     var kick = 0f
     var beat = false
@@ -36,11 +39,15 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
     private val bassBins = bins(BASS_LOW, BASS_HIGH)
     private val midBins = bins(MID_LOW, MID_HIGH)
     private val trebleBins = bins(TREBLE_LOW, TREBLE_HIGH)
-    private val tracker = BeatTracker()
+    private val bassTracker = BeatTracker()
+    private val midTracker = BeatTracker()
+    private val highTracker = BeatTracker()
+    private var time = 0.0
+    private var lastBeat = Double.NEGATIVE_INFINITY
     val frame = AudioFrame()
 
     /** Expects newest fftSize mono samples. */
-    fun analyze(samples: FloatArray, dt: Float, sensitivity: Float): AudioFrame {
+    fun analyze(samples: FloatArray, dt: Float, sensitivity: Float, bass: Float = 1f, mid: Float = 0f, high: Float = 0f): AudioFrame {
         computeLevels(samples)
         var total = 0f
         bandBins.forEachIndexed { index, range ->
@@ -51,11 +58,33 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
         frame.bass = average(bassBins)
         frame.mid = average(midBins)
         frame.treble = average(trebleBins)
-        val beat = tracker.update(bassPower(), dt.toDouble(), sensitivity)
-        frame.beat = beat.beat
-        frame.beatStrength = beat.strength
-        frame.kick = max(beat.strength, frame.kick * exp(-KICK_DECAY * dt))
+        frame.drive = mix(bass, mid, high)
+        time += dt
+        val strength = bandBeats(dt.toDouble(), sensitivity, bass, mid, high)
+        frame.beat = strength >= MIN_WEIGHTED && time - lastBeat > MERGE_SECONDS
+        frame.beatStrength = if (frame.beat) strength else 0f
+        if (frame.beat) lastBeat = time
+        frame.kick = max(frame.beatStrength, frame.kick * exp(-KICK_DECAY * dt))
         return frame
+    }
+
+    // Strongest weighted hit this frame
+    private fun bandBeats(dt: Double, sensitivity: Float, bass: Float, mid: Float, high: Float): Float {
+        val low = bassTracker.update(power(bassBins), dt, sensitivity)
+        val middle = midTracker.update(power(midBins), dt, sensitivity)
+        val top = highTracker.update(power(trebleBins), dt, sensitivity)
+        var strength = 0f
+        if (low.beat) strength = max(strength, low.strength * bass)
+        if (middle.beat) strength = max(strength, middle.strength * mid)
+        if (top.beat) strength = max(strength, top.strength * high)
+        return strength
+    }
+
+    // Bass alone when weights off
+    private fun mix(bass: Float, mid: Float, high: Float): Float {
+        val total = bass + mid + high
+        if (total < MIN_WEIGHTED) return frame.bass
+        return (frame.bass * bass + frame.mid * mid + frame.treble * high) / total
     }
 
     // Mirrors Web Audio analyser scaling
@@ -79,13 +108,13 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
         return sum / max(1, range.count())
     }
 
-    private fun bassPower(): Double {
+    private fun power(range: IntRange): Double {
         var sum = 0.0
-        for (k in bassBins) {
+        for (k in range) {
             val db = MIN_DB + levels[k] * (MAX_DB - MIN_DB)
             sum += 10.0.pow((db - MAX_DB) / 10.0)
         }
-        return sum / max(1, bassBins.count())
+        return sum / max(1, range.count())
     }
 
     private fun bins(low: Float, high: Float): IntRange {
@@ -115,6 +144,8 @@ class SpectrumAnalyzer(sampleRate: Int, val fftSize: Int = 2048) {
         private const val MAX_DB = -20f
         private const val SMOOTHING = 0.2f
         private const val KICK_DECAY = 7f
+        private const val MIN_WEIGHTED = 0.02f
+        private const val MERGE_SECONDS = 0.06
 
         private fun blackman(i: Int, n: Int): Float {
             val x = 2 * PI * i / n

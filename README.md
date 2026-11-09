@@ -41,7 +41,7 @@ Semuanya berjalan **offline** di HP. Tidak perlu akun, tidak perlu server, tidak
     </td>
     <td width="50%" valign="top">
       <h3>NextPlayer</h3>
-      Template Pulse Ring dengan logo DJ dan background pilihanmu. Gunung beat, komet berasap, dan partikel bereaksi pada drum. Jumlah komet dan partikel bisa diatur, ada cahaya glare ala Blender untuk komet, glitch, dan gunung beat, ada slider sinkron untuk HP mana pun, dan ikon 3D TikTok, YouTube, Spotify, serta Instagram dengan username bisa dipasang di bawah judul.
+      Template Pulse Ring dengan logo DJ dan background pilihanmu. Gunung beat, komet berasap, dan partikel bereaksi pada drum, dengan intensitas reaksi Bass, Mid, dan High yang bisa diatur sendiri serta tetap naik lagi saat beat datang beruntun. Jumlah komet dan partikel bisa diatur, ada cahaya glare ala Blender untuk komet, glitch, dan gunung beat, ada slider sinkron untuk HP mana pun, dan ikon 3D TikTok, YouTube, Spotify, serta Instagram dengan username bisa dipasang di bawah judul.
     </td>
   </tr>
   <tr>

@@ -130,7 +130,7 @@ fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: 
         val now = tick
         val dt = if (last.longValue == 0L) 1 / 60f else ((now - last.longValue) / 1e9f).coerceIn(0f, MAX_FRAME_SECONDS)
         last.longValue = now
-        val frame = vm.analysis.next(dt, settings.sensitivity, settings.syncMs)
+        val frame = vm.analysis.next(dt, settings)
         drawIntoCanvas { template.draw(it.drawingCanvas(), size.width.toInt(), size.height.toInt(), frame, dt, settings) }
     }
 }
@@ -190,6 +190,9 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
         }
         PanelSection("Gerak") {
             ValueSlider("Sensitivitas beat", settings.sensitivity, 0.3f..2.5f, { v -> update { it.copy(sensitivity = v) } }, { "%.1f×".format(it) })
+            ValueSlider("Bass", settings.beatBass, FxRanges.UNIT, { v -> update { it.copy(beatBass = v) } }, ::formatIntensity)
+            ValueSlider("Mid", settings.beatMid, FxRanges.UNIT, { v -> update { it.copy(beatMid = v) } }, ::formatIntensity)
+            ValueSlider("High", settings.beatHigh, FxRanges.UNIT, { v -> update { it.copy(beatHigh = v) } }, ::formatIntensity)
             ValueSlider("Sinkron", settings.syncMs.toFloat(), 0f..VisualSettings.MAX_SYNC_MS.toFloat(), { v -> update { it.copy(syncMs = v.roundToInt()) } }, { "${it.roundToInt()} ms" })
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
             ValueSlider("Jumlah komet", settings.cometCount.toFloat(), 0f..VisualSettings.MAX_COMETS.toFloat(), { v -> update { it.copy(cometCount = v.roundToInt()) } }, { it.roundToInt().toString() })

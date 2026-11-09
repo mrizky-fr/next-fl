@@ -331,8 +331,10 @@ class CometField(private val random: Random = Random(11)) {
 /** Elastic water-like hills, mirrored. */
 class BeatHills {
     private var target = 0f
-    private var level = 0f
+    var level = 0f
+        private set
     private var velocity = 0f
+    private var punch = 0f
     private var phase = 0f
     private var peak = 0f
     private var floor = 0f
@@ -347,15 +349,17 @@ class BeatHills {
     private val leftReach = FloatArray(ROWS)
     private val leftLift = FloatArray(ROWS)
 
-    // Rises on beat, holds while bass lasts
-    fun update(beat: Boolean, strength: Float, bass: Float, dt: Float) {
-        floor += (bass - floor) * (1f - exp(-dt / FLOOR_SECONDS))
+    // Each beat lifts again, even raised
+    fun update(beat: Boolean, strength: Float, drive: Float, dt: Float) {
+        floor += (drive - floor) * (1f - exp(-dt / FLOOR_SECONDS))
+        punch *= exp(-dt * PUNCH_DECAY)
         if (beat) {
             peak = strength.pow(RESPONSE_CURVE)
-            anchor = max(bass, floor + MIN_SPAN)
+            anchor = max(drive, floor + MIN_SPAN)
+            punch = max(punch, peak * PUNCH_AMOUNT)
         }
-        val sustain = ((bass - floor) / max(MIN_SPAN, anchor - floor)).coerceIn(0f, 1f)
-        target = peak * sustain.pow(SUSTAIN_CURVE)
+        val sustain = ((drive - floor) / max(MIN_SPAN, anchor - floor)).coerceIn(0f, 1f)
+        target = peak * sustain.pow(SUSTAIN_CURVE) + punch
         if (sustain <= 0f) peak = 0f
         spring(dt)
         phase += dt * WAVE_SPEED
@@ -474,6 +478,8 @@ class BeatHills {
         const val MIN_SPAN = 0.04f
         const val SUSTAIN_CURVE = 0.7f
         const val RESPONSE_CURVE = 0.6f
+        const val PUNCH_AMOUNT = 0.35f
+        const val PUNCH_DECAY = 10f
         const val MIN_LEVEL = 0.005f
         const val ROWS = 56
         const val ROW_OFFSET = 4

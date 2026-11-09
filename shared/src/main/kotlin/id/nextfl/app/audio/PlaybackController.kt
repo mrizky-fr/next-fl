@@ -5,6 +5,7 @@ import id.nextfl.core.analysis.AudioFrame
 import id.nextfl.core.analysis.SpectrumAnalyzer
 import id.nextfl.core.engine.MixEngine
 import id.nextfl.core.engine.RenderGraphBuilder
+import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.state.ProjectStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -160,12 +161,12 @@ class VisualAnalysis(private val playback: PlaybackController) {
     private val analyzer = SpectrumAnalyzer(playback.engine.sampleRate)
     private val window = FloatArray(analyzer.fftSize)
 
-    fun next(dt: Float, sensitivity: Float, syncMs: Int): AudioFrame {
-        val lookahead = lookaheadFrames(syncMs)
+    fun next(dt: Float, settings: VisualSettings): AudioFrame {
+        val lookahead = lookaheadFrames(settings.syncMs)
         // Buffer grows so sync holds
         playback.requestRenderAhead(lookahead.toInt() + AudioStream.BLOCK_FRAMES)
         if (playback.isPlaying.value) playback.engine.tap.read(lookaheadEnd(lookahead), window) else window.fill(0f)
-        return analyzer.analyze(window, dt, sensitivity)
+        return analyzer.analyze(window, dt, settings.sensitivity, settings.beatBass, settings.beatMid, settings.beatHigh)
     }
 
     private fun lookaheadFrames(syncMs: Int): Long = syncMs.coerceAtLeast(0).toLong() * playback.engine.sampleRate / MILLIS_PER_SECOND
