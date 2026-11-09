@@ -89,12 +89,49 @@ compose.desktop {
     }
 }
 
+val releaseImage = layout.buildDirectory.dir("compose/binaries/main-release/app")
+val portableLauncher = layout.buildDirectory.dir("portable-launcher")
+
+// Signed javaw passes Smart App Control
+val preparePortableLauncher by tasks.registering {
+    dependsOn("createReleaseDistributable")
+    val cfgFile = releaseImage.map { it.file("NextFL/app/NextFL.cfg") }
+    val outDir = portableLauncher
+    inputs.file(cfgFile)
+    outputs.dir(outDir)
+    doLast {
+        val lines = cfgFile.get().asFile.readLines()
+        val classpath = lines.filter { it.startsWith("app.classpath=") }
+            .joinToString(";") { it.substringAfter('=').replace("\$APPDIR\\", "app/") }
+        val mainClass = lines.first { it.startsWith("app.mainclass=") }.substringAfter('=')
+        val options = lines.filter { it.startsWith("java-options=") }.joinToString(" ") { line ->
+            val option = line.substringAfter('=').replace("\$APPDIR", "%~dp0app")
+            if ('=' in option.substringAfter("-D")) option.substringBefore('=') + "=\"" + option.substringAfter('=') + "\"" else option
+        }
+        val dir = outDir.get().asFile.resolve("NextFL").apply { mkdirs() }
+        dir.resolve("app").mkdirs()
+        // Argfile treats backslash as escape
+        dir.resolve("app/launcher.args").writeText("-cp\n$classpath\n$mainClass\n")
+        val script = listOf(
+            "@echo off",
+            "rem Use when NextFL.exe is blocked",
+            "cd /d \"%~dp0\"",
+            "start \"\" \"%~dp0runtime\\bin\\javaw.exe\" $options @app\\launcher.args %*",
+        )
+        dir.resolve("Jalankan NextFL.bat").writeText(script.joinToString("\r\n", postfix = "\r\n"))
+    }
+}
+
 // Extract and run, no install
 val packageReleasePortable by tasks.registering(Zip::class) {
     group = "compose desktop"
     description = "Zips the release app image as a portable build."
-    dependsOn("createReleaseDistributable")
-    from(layout.buildDirectory.dir("compose/binaries/main-release/app"))
+    dependsOn(preparePortableLauncher)
+    from(releaseImage)
+    from(portableLauncher)
+    from(packagingJdk.map { it.metadata.installationPath.file("bin/javaw.exe") }) {
+        into("NextFL/runtime/bin")
+    }
     archiveFileName.set("NextFL-Portable.zip")
     destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main-release/portable"))
 }
