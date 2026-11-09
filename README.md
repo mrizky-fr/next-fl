@@ -4,11 +4,13 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+di+HP+dan+PC;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV%2C+MP3+%26+video+MP4+siap+upload" alt="Edit & remix lagu di HP dan PC" />
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.53-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.58-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.53-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.58-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+&nbsp;
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.58-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
-<sub>Android 10+ · ±3,4 MB &nbsp;|&nbsp; Windows 10/11 64-bit · ±52 MB &nbsp;|&nbsp; Gratis</sub>
+<sub>Android 10+ · ±3,4 MB &nbsp;|&nbsp; Windows 10/11 64-bit · installer ±52 MB, portable ±50 MB &nbsp;|&nbsp; Gratis</sub>
 
 </div>
 
@@ -63,9 +65,11 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
 
 <div align="center">
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.53-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.58-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.53-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.58-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+&nbsp;
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.58-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
 </div>
 
@@ -75,11 +79,20 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
 2. Buka file yang terunduh. Bila diminta, izinkan pemasangan dari sumber ini.
 3. Pasang, buka **NextFL**, tekan **+ Audio**, dan mulai meracik.
 
-**Windows**
+**Windows, installer**
 
-1. Unduh installer lewat tombol **Windows** di atas.
+1. Unduh installer lewat tombol **Windows Installer** di atas.
 2. Jalankan `NextFL-Setup.msi`. Installer ini belum bertanda tangan digital, jadi Windows SmartScreen mungkin memperingatkan. Pilih **More info**, lalu **Run anyway**.
 3. Buka **NextFL** dari Start Menu atau shortcut di desktop. Tidak perlu memasang Java.
+
+**Windows, portable (tanpa instal)**
+
+1. Unduh `NextFL-Portable.zip` lewat tombol **Windows Portable** di atas.
+2. Klik kanan file ZIP, pilih **Properties**, centang **Unblock**, lalu **OK**. Tanpa langkah ini Windows bisa memblokir file di dalamnya.
+3. Ekstrak ke folder mana saja, termasuk flashdisk, lalu buka folder `NextFL`.
+4. Klik dua kali `NextFL.exe`. Kalau Windows memblokirnya, klik dua kali `Jalankan NextFL.bat`.
+
+Windows 11 dengan **Smart App Control** aktif memblokir aplikasi yang belum bertanda tangan digital, termasuk `NextFL.exe` dan installer MSI, dan tidak menyediakan pilihan **Run anyway**. Di PC seperti itu, pakai versi portable lewat `Jalankan NextFL.bat`. File itu menjalankan NextFL dengan `javaw.exe` yang bertanda tangan resmi dari Eclipse Foundation, jadi tidak ikut diblokir. Versi portable tetap menyimpan proyek di `%APPDATA%\NextFL` pada PC yang dipakai.
 
 Di Windows, Spasi memutar dan menjeda, Ctrl+Z membatalkan, dan Ctrl+Y mengulang. Hasil export masuk ke `Music\NextFL`, dan tombol **Buka folder** menunjukkan file-nya. MP3 dan WAV langsung bisa dibuka. M4A, OGG, FLAC, dan Opus butuh [ffmpeg](https://ffmpeg.org/download.html) terpasang di PATH. Export video MP4 baru ada di Android.
 
@@ -121,10 +134,10 @@ Versi Windows dijalankan dan dikemas dengan:
 
 ```powershell
 .\gradlew.bat :desktop:test :desktop:run
-.\gradlew.bat :desktop:packageReleaseMsi
+.\gradlew.bat :desktop:packageReleaseMsi :desktop:packageReleasePortable
 ```
 
-Installer dibuat di `desktop/build/compose/binaries/main-release/msi/`, lalu disalin menimpa [`release/NextFL-Setup.msi`](release/NextFL-Setup.msi) untuk tombol unduh Windows. Gradle mengunduh JDK 21 sekali (lewat toolchain foojay) karena `jpackage` tidak ada di JBR Android Studio, dan WiX diunduh otomatis oleh plugin Compose. ProGuard hanya membuang kelas yang tidak dipakai (tanpa obfuscation). Untuk mengecek build rilis tanpa membuka jendela: `NextFL.exe --self-test <file.mp3> <laporan.txt>`.
+Installer dibuat di `desktop/build/compose/binaries/main-release/msi/`, lalu disalin menimpa [`release/NextFL-Setup.msi`](release/NextFL-Setup.msi). Versi portable dibuat di `desktop/build/compose/binaries/main-release/portable/NextFL-Portable.zip` dan disalin ke [`release/NextFL-Portable.zip`](release/NextFL-Portable.zip). ZIP itu berisi app image yang sama dengan installer, ditambah `javaw.exe` dari JDK yang sama dan `Jalankan NextFL.bat` yang dibuat dari `NextFL.cfg`, jadi classpath dan opsi JVM-nya selalu cocok. Gradle mengunduh JDK 21 sekali (lewat toolchain foojay) karena `jpackage` tidak ada di JBR Android Studio, dan WiX diunduh otomatis oleh plugin Compose. ProGuard hanya membuang kelas yang tidak dipakai (tanpa obfuscation). Untuk mengecek build rilis tanpa membuka jendela: `NextFL.exe --self-test <file.mp3> <laporan.txt>`.
 
 Tidak ada API key. Kredensial tanda tangan rilis dibaca dari environment variable, atau dari `keystore.properties` bila variabelnya tidak diset. Salin [`keystore.properties.example`](keystore.properties.example) menjadi `keystore.properties`, lalu isi nilainya. Keystore dan file itu tidak di-commit. Tanpa keystore, build rilis tetap jalan tetapi APK-nya tidak bertanda tangan.
 
@@ -141,7 +154,7 @@ Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
 ## Catatan
 
-APK dan installer Windows di tombol unduh adalah **build rilis**, bukan rilis Play Store atau Microsoft Store. APK-nya bertanda tangan, installer Windows belum. Keduanya selalu ditimpa versi terbaru, dan versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Di Windows, proyek tersimpan di `%APPDATA%\NextFL`. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)). Versi Windows memakai [JLayer](http://www.javazoom.net/javalayer/javalayer.html) untuk decode MP3 (juga LGPL 2.1, teks lisensi yang sama), [FileKit](https://github.com/vinceglb/filekit) (MIT), dan JNA (Apache 2.0).
+APK, installer Windows, dan ZIP portable di tombol unduh adalah **build rilis**, bukan rilis Play Store atau Microsoft Store. APK-nya bertanda tangan, versi Windows belum. Semuanya selalu ditimpa versi terbaru, dan versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Di Windows, proyek tersimpan di `%APPDATA%\NextFL`. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)). Versi Windows memakai [JLayer](http://www.javazoom.net/javalayer/javalayer.html) untuk decode MP3 (juga LGPL 2.1, teks lisensi yang sama), [FileKit](https://github.com/vinceglb/filekit) (MIT), dan JNA (Apache 2.0).
 
 ## Pembuat
 
