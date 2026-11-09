@@ -59,20 +59,31 @@ fun Bitmap.toImageBitmap(): ImageBitmap = toComposeImageBitmap()
 fun Canvas.drawingCanvas(): android.graphics.Canvas = android.graphics.Canvas(nativeCanvas)
 
 // Native Windows dialog, AWT fallback
-private suspend fun pickFiles(title: String, extensions: List<String>, multiple: Boolean): List<File> = try {
+private suspend fun pickFiles(title: String, extensions: List<String>, multiple: Boolean): List<File> =
+    withPickerFallback({ nativeFiles(title, extensions, multiple) }) { awtFiles(title, extensions, multiple) }
+
+private suspend fun nativeFiles(title: String, extensions: List<String>, multiple: Boolean): List<File> {
     val settings = DesktopWindow.frame?.let { FileKitDialogSettings(title = title, parent = FileKitDialogParent.awt(it)) }
         ?: FileKitDialogSettings(title = title)
     val type = FileKitType.File(extensions)
-    if (multiple) {
+    return if (multiple) {
         FileKit.openFilePicker(type = type, mode = FileKitMode.Multiple(), dialogSettings = settings).orEmpty().map { it.file }
     } else {
         listOfNotNull(FileKit.openFilePicker(type = type, dialogSettings = settings)?.file)
     }
+}
+
+// Blocked JNA DLL throws LinkageError
+internal suspend fun withPickerFallback(native: suspend () -> List<File>, fallback: () -> List<File>): List<File> = try {
+    native()
 } catch (cancelled: CancellationException) {
     throw cancelled
 } catch (error: Exception) {
     Log.w(TAG, "Native picker failed, using AWT", error)
-    awtFiles(title, extensions, multiple)
+    fallback()
+} catch (error: LinkageError) {
+    Log.w(TAG, "Native library unavailable, using AWT", error)
+    fallback()
 }
 
 private fun awtFiles(title: String, extensions: List<String>, multiple: Boolean): List<File> {
