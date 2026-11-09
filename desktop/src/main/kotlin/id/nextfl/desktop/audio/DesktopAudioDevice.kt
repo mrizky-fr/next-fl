@@ -7,6 +7,7 @@ import id.nextfl.core.engine.MixEngine
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.SourceDataLine
+import kotlin.math.ceil
 
 /** Default Windows output via Java Sound. */
 class DesktopAudioDevice : AudioDevice {
@@ -42,7 +43,7 @@ private class DesktopAudioStream(
     init {
         priority = MAX_PRIORITY
         isDaemon = true
-        if (tuning.baseFrames == 0) tuning.baseFrames = START_FRAMES
+        if (tuning.baseFrames == 0) tuning.baseFrames = DesktopBuffer.startFrames(engine.sampleRate)
     }
 
     override fun begin() = start()
@@ -82,10 +83,9 @@ private class DesktopAudioStream(
         return maxOf(tuning.baseFrames, ahead).coerceIn(BLOCK_FRAMES * 2, capacityFrames)
     }
 
-    // Empty queue means underrun
     private fun checkUnderrun() {
-        if (blocks < WARMUP_BLOCKS || queuedFrames() > 0) return
-        tuning.baseFrames = (tuning.baseFrames + BLOCK_FRAMES).coerceAtMost(capacityFrames)
+        if (blocks < WARMUP_BLOCKS) return
+        tuning.baseFrames = DesktopBuffer.grownBase(tuning.baseFrames, queuedFrames(), capacityFrames)
     }
 
     private fun queuedFrames(): Long = framesWritten - line.longFramePosition
@@ -116,11 +116,23 @@ private class DesktopAudioStream(
         const val BITS = 16
         const val CHANNELS = 2
         const val BYTES_PER_FRAME = 4
-        const val START_FRAMES = BLOCK_FRAMES * 4
         const val CAPACITY_FRAMES = BLOCK_FRAMES * 32
         const val WARMUP_BLOCKS = 16L
         const val POLL_MS = 1L
         const val JOIN_TIMEOUT_MS = 500L
         const val SHORT_MAX = 32767f
     }
+}
+
+/** Queue sizing for Java Sound. */
+internal object DesktopBuffer {
+    // DirectSound stutters below ~100 ms
+    private const val START_SECONDS = 0.12
+
+    fun startFrames(sampleRate: Int): Int =
+        ceil(sampleRate * START_SECONDS / AudioStream.BLOCK_FRAMES).toInt() * AudioStream.BLOCK_FRAMES
+
+    // Grow before queue runs dry
+    fun grownBase(base: Int, queued: Long, capacity: Int): Int =
+        if (queued >= AudioStream.BLOCK_FRAMES) base else (base + AudioStream.BLOCK_FRAMES).coerceAtMost(capacity)
 }

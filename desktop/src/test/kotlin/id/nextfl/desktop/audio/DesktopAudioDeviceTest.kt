@@ -18,16 +18,20 @@ class DesktopAudioDeviceTest {
         var failure: Exception? = null
         val stream = DesktopAudioDevice().open(engine, OutputTuning()) { _, error -> failure = error }
         stream.begin()
-        Thread.sleep(PLAY_MS)
+        // DirectSound may start late
+        val deadline = System.currentTimeMillis() + START_TIMEOUT_MS
+        while (stream.audibleOutputFrame() < WANTED_FRAMES && System.currentTimeMillis() < deadline) Thread.sleep(POLL_MS)
         val heard = stream.audibleOutputFrame()
         stream.finish()
         assertNull(failure)
-        assertTrue(heard > RATE * PLAY_MS / 1000 / 3, "clock stuck at $heard")
+        assertTrue(heard >= WANTED_FRAMES, "clock stuck at $heard")
         assertTrue(stream.audibleOutputFrame() >= heard)
     }
 
     private companion object {
         const val RATE = 44_100
-        const val PLAY_MS = 600L
+        const val WANTED_FRAMES = RATE / 5L
+        const val START_TIMEOUT_MS = 3_000L
+        const val POLL_MS = 20L
     }
 }
