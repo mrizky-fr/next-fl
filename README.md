@@ -4,11 +4,11 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+di+HP+dan+PC;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV%2C+MP3+%26+video+MP4+siap+upload" alt="Edit & remix lagu di HP dan PC" />
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.58-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.61-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.58-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.61-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.58-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.61-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
 <sub>Android 10+ · ±3,4 MB &nbsp;|&nbsp; Windows 10/11 64-bit · installer ±52 MB, portable ±50 MB &nbsp;|&nbsp; Gratis</sub>
 
@@ -65,11 +65,11 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
 
 <div align="center">
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.58-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.61-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.58-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.61-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.58-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.61-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
 </div>
 
