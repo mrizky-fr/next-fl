@@ -32,8 +32,7 @@ private val PREVIEW_GAP = 8.dp
 @Composable
 fun SplitScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing: Boolean) {
     val settings by vm.visualSettings.collectAsState()
-    val background by vm.background.collectAsState()
-    val logo by vm.logo.collectAsState()
+    val images = rememberRotationImages(vm)
     Row(Modifier.fillMaxSize().background(Palette.Surface)) {
         Column(Modifier.weight(1f).fillMaxHeight()) {
             TimelineStrip(vm, state, ui, playing, Modifier.fillMaxWidth().height(SingleLaneHeight))
@@ -48,7 +47,7 @@ fun SplitScreen(vm: EditorViewModel, state: EditorState, ui: UiState, playing: B
                 .clip(RoundedCornerShape(Dimens.Radius))
                 .background(Palette.Bg),
         ) {
-            VisualizerCanvas(vm, settings, background, logo)
+            VisualizerCanvas(vm, settings, images)
         }
     }
 }

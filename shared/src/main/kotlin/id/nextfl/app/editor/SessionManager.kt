@@ -7,6 +7,7 @@ import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.state.ProjectStore
 import id.nextfl.app.audio.AssetLibrary
 import id.nextfl.app.audio.LoadedAsset
+import id.nextfl.app.data.CollabImage
 import id.nextfl.app.data.ProjectRepository
 import id.nextfl.app.data.SavedProject
 import id.nextfl.app.data.VisualImage
@@ -28,8 +29,12 @@ class VisualState {
     val settings = MutableStateFlow(VisualSettings())
     val background = MutableStateFlow<Bitmap?>(null)
     val logo = MutableStateFlow<Bitmap?>(null)
+    val collabBackgrounds = MutableStateFlow<List<CollabImage>>(emptyList())
+    val collabLogos = MutableStateFlow<List<CollabImage>>(emptyList())
 
     fun image(kind: VisualImage) = if (kind == VisualImage.BACKGROUND) background else logo
+
+    fun collab(kind: VisualImage) = if (kind == VisualImage.BACKGROUND) collabBackgrounds else collabLogos
 }
 
 /** Restores project, then autosaves. */
@@ -62,7 +67,10 @@ class SessionManager(
     }
 
     private suspend fun restore() {
-        VisualImage.entries.forEach { kind -> visuals.image(kind).value = repository.loadImage(kind) }
+        VisualImage.entries.forEach { kind ->
+            visuals.image(kind).value = repository.loadImage(kind)
+            visuals.collab(kind).value = repository.loadCollab(kind)
+        }
         val saved = repository.load() ?: return
         visuals.settings.value = Sanitize.visual(saved.visual)
         val assets: AssetMap = withContext(Dispatchers.Default) {

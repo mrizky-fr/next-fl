@@ -18,6 +18,14 @@ enum class SocialPlatform(val label: String) {
 }
 
 @Serializable
+enum class SlideDirection(val label: String) {
+    RIGHT("Kanan"),
+    BOTTOM("Bawah"),
+    TOP("Atas"),
+    LEFT("Kiri"),
+}
+
+@Serializable
 data class VisualSettings(
     val templateId: String = "pulse-ring",
     val aspect: AspectRatio = AspectRatio.WIDE,
@@ -47,6 +55,8 @@ data class VisualSettings(
     val showSocial: Boolean = false,
     val socialUsername: String = "",
     val socialPlatforms: Set<SocialPlatform> = SocialPlatform.entries.toSet(),
+    val collabTexts: List<String> = emptyList(),
+    val backgroundSlide: SlideDirection = SlideDirection.RIGHT,
 ) {
     companion object {
         const val WHITE = 0xFFFFFFFF
@@ -60,6 +70,10 @@ data class VisualSettings(
         // Each comet has heavy trail
         const val MAX_COMETS = 16
         const val MAX_USERNAME = 40
+        const val MAX_TITLE = 80
+
+        // Per kind, bounds bitmap memory
+        const val MAX_COLLAB = 8
         const val DEFAULT_GLARE = 0.5f
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Fullscreen
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,10 +52,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import id.nextfl.core.model.AspectRatio
 import id.nextfl.core.model.FxRanges
+import id.nextfl.core.model.SlideDirection
 import id.nextfl.core.model.SocialPlatform
 import id.nextfl.core.model.VisualSettings
 import kotlin.math.roundToInt
+import id.nextfl.app.data.CollabImage
 import id.nextfl.app.data.VisualImage
+import id.nextfl.app.data.rotationImages
 import id.nextfl.app.platform.drawingCanvas
 import id.nextfl.app.platform.rememberImagePicker
 import id.nextfl.app.platform.toImageBitmap
@@ -88,9 +93,10 @@ fun VisualScreen(vm: EditorViewModel, ui: UiState, playing: Boolean) {
     val settings by vm.visualSettings.collectAsState()
     val background by vm.background.collectAsState()
     val logo by vm.logo.collectAsState()
+    val images = rememberRotationImages(vm)
     Row(Modifier.fillMaxSize().background(Palette.Bg)) {
         Box(Modifier.weight(1f).fillMaxHeight().padding(12.dp)) {
-            AspectFit(settings.aspect) { VisualizerCanvas(vm, settings, background, logo) }
+            AspectFit(settings.aspect) { VisualizerCanvas(vm, settings, images) }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 IconAction(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", vm::togglePlay, variant = ButtonVariant.SOLID)
                 IconAction(
@@ -120,10 +126,24 @@ private fun AspectFit(aspect: AspectRatio, content: @Composable () -> Unit) {
     }
 }
 
+/** Main image first, then collab extras. */
+class RotationImages(val backgrounds: List<Bitmap>, val logos: List<Bitmap>)
+
 @Composable
-fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
+fun rememberRotationImages(vm: EditorViewModel): RotationImages {
+    val background by vm.background.collectAsState()
+    val logo by vm.logo.collectAsState()
+    val extraBackgrounds by vm.collabBackgrounds.collectAsState()
+    val extraLogos by vm.collabLogos.collectAsState()
+    return remember(background, logo, extraBackgrounds, extraLogos) {
+        RotationImages(rotationImages(background, extraBackgrounds), rotationImages(logo, extraLogos))
+    }
+}
+
+@Composable
+fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, images: RotationImages) {
     val template = remember { PulseRingTemplate(vm.canvasFonts.bold) }
-    LaunchedEffect(background, logo) { template.setImages(background, logo) }
+    LaunchedEffect(images) { template.setImages(images.backgrounds, images.logos) }
     val tick by rememberFrameTick()
     val last = remember { mutableLongStateOf(0L) }
     Canvas(Modifier.fillMaxSize()) {
@@ -138,6 +158,8 @@ fun VisualizerCanvas(vm: EditorViewModel, settings: VisualSettings, background: 
 @Composable
 private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, background: Bitmap?, logo: Bitmap?) {
     fun update(transform: (VisualSettings) -> VisualSettings) = vm.updateVisual(transform)
+    val collabLogos by vm.collabLogos.collectAsState()
+    val collabBackgrounds by vm.collabBackgrounds.collectAsState()
     Column(
         modifier = Modifier.width(300.dp).fillMaxHeight().background(Palette.Surface).verticalScroll(rememberScrollState()).padding(PANEL_PADDING),
         verticalArrangement = Arrangement.spacedBy(PANEL_GAP),
@@ -153,7 +175,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ImagePickerRow(vm, VisualImage.BACKGROUND, "Background", background, RoundedCornerShape(Dimens.Radius))
         }
         PanelSection("Teks") {
-            TextInput(settings.title, { text -> update { it.copy(title = text.take(80)) } }, Modifier.fillMaxWidth(), placeholder = "Judul lagu / nama DJ (opsional)")
+            TextInput(settings.title, { text -> update { it.copy(title = text.take(VisualSettings.MAX_TITLE)) } }, Modifier.fillMaxWidth(), placeholder = "Judul lagu / nama DJ (opsional)")
             ToggleRow("Sosmed & username", settings.showSocial, { on -> update { it.copy(showSocial = on) } })
             if (settings.showSocial) {
                 TextInput(
@@ -166,6 +188,21 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
                     update { it.copy(socialPlatforms = if (platform in it.socialPlatforms) it.socialPlatforms - platform else it.socialPlatforms + platform) }
                 }
             }
+        }
+        PanelSection("Kolaborasi") {
+            Text("Logo bergantian dengan Logo DJ tiap 4 detik", style = TextStyles.Caption)
+            CollabImageList(vm, VisualImage.LOGO, "Logo", collabLogos)
+            Text("Teks berganti bareng logo", style = TextStyles.Caption)
+            CollabTextList(
+                settings.collabTexts,
+                onEdit = { index, text -> update { it.copy(collabTexts = it.collabTexts.mapIndexed { i, old -> if (i == index) text.take(VisualSettings.MAX_TITLE) else old }) } },
+                onRemove = { index -> update { it.copy(collabTexts = it.collabTexts.filterIndexed { i, _ -> i != index }) } },
+                onAdd = { update { if (it.collabTexts.size >= VisualSettings.MAX_COLLAB) it else it.copy(collabTexts = it.collabTexts + "") } },
+            )
+            Text("Background bergantian tiap 5 detik", style = TextStyles.Caption)
+            CollabImageList(vm, VisualImage.BACKGROUND, "Background", collabBackgrounds)
+            Text("Masuk dari", style = TextStyles.Caption)
+            SegmentedControl(SlideDirection.entries, settings.backgroundSlide, { it.label }, { side -> update { it.copy(backgroundSlide = side) } })
         }
         PanelSection("Warna") {
             Text("Ring", style = TextStyles.Caption)
@@ -241,6 +278,36 @@ private fun ImagePickerRow(vm: EditorViewModel, kind: VisualImage, label: String
         FlatButton(if (bitmap == null) "Pilih" else "Ganti", Icons.Rounded.AddPhotoAlternate, pickImage)
         if (bitmap != null) FlatButton("Hapus", Icons.Rounded.Delete, { vm.removeImage(kind) }, variant = ButtonVariant.GHOST)
     }
+}
+
+// Numbered after the main image
+@Composable
+private fun CollabImageList(vm: EditorViewModel, kind: VisualImage, label: String, images: List<CollabImage>) {
+    val pickImage = rememberImagePicker { file -> vm.addCollabImage(kind, file) }
+    images.forEachIndexed { index, image ->
+        key(image.id) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
+                val thumbnail = remember(image.bitmap) { image.bitmap.toImageBitmap() }
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(Dimens.Radius)).background(Palette.Well)) {
+                    Image(thumbnail, contentDescription = label, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
+                Text("$label ${index + 2}", style = TextStyles.Body, modifier = Modifier.weight(1f))
+                FlatButton("Hapus", Icons.Rounded.Delete, { vm.removeCollabImage(kind, image.id) }, variant = ButtonVariant.GHOST)
+            }
+        }
+    }
+    if (images.size < VisualSettings.MAX_COLLAB) FlatButton("Tambah ${label.lowercase()}", Icons.Rounded.AddPhotoAlternate, pickImage)
+}
+
+@Composable
+private fun CollabTextList(texts: List<String>, onEdit: (Int, String) -> Unit, onRemove: (Int) -> Unit, onAdd: () -> Unit) {
+    texts.forEachIndexed { index, text ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
+            TextInput(text, { value -> onEdit(index, value) }, Modifier.weight(1f), placeholder = "Teks ${index + 2}")
+            IconAction(Icons.Rounded.Delete, "Hapus teks", { onRemove(index) })
+        }
+    }
+    if (texts.size < VisualSettings.MAX_COLLAB) FlatButton("Tambah teks", Icons.Rounded.Add, onAdd)
 }
 
 private fun aspectIcon(aspect: AspectRatio) = when (aspect) {

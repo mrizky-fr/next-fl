@@ -22,8 +22,8 @@ class VideoRenderer(
     private val plan: VideoPlan,
     private val audio: PcmSource,
     private val settings: VisualSettings,
-    private val background: Bitmap?,
-    private val logo: Bitmap?,
+    private val backgrounds: List<Bitmap>,
+    private val logos: List<Bitmap>,
     private val typeface: Typeface,
 ) {
     private val info = MediaCodec.BufferInfo()
@@ -76,7 +76,7 @@ class VideoRenderer(
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Boolean {
-        val template = PulseRingTemplate(typeface).apply { setImages(background, logo) }
+        val template = PulseRingTemplate(typeface).apply { setImages(backgrounds, logos) }
         val total = ceil(audio.durationSeconds * VideoPlan.FPS).toInt()
         val dt = 1f / VideoPlan.FPS
         for (index in 0 until total) {

@@ -45,6 +45,17 @@ class VisualSettingsTest {
     }
 
     @Test
+    fun collabTextsAreCappedAndOldProjectsHaveNone() {
+        val many = VisualSettings(collabTexts = List(20) { "x".repeat(200) })
+        val clamped = Sanitize.visual(many).collabTexts
+        assertEquals(VisualSettings.MAX_COLLAB, clamped.size)
+        assertEquals(VisualSettings.MAX_TITLE, clamped.first().length)
+        val old = Json { ignoreUnknownKeys = true }.decodeFromString(VisualSettings.serializer(), """{"title":"DJ"}""")
+        assertEquals(emptyList(), old.collabTexts)
+        assertEquals(SlideDirection.RIGHT, old.backgroundSlide)
+    }
+
+    @Test
     fun socialSettingsSurviveRoundTrip() {
         val json = Json { ignoreUnknownKeys = true }
         val original = VisualSettings(showSocial = true, socialUsername = "@djkyy", socialPlatforms = setOf(SocialPlatform.TIKTOK, SocialPlatform.SPOTIFY))

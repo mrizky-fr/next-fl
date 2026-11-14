@@ -67,8 +67,8 @@ class VideoRequest(
     val mix: File,
     val aspect: AspectRatio,
     val settings: VisualSettings,
-    val background: Bitmap?,
-    val logo: Bitmap?,
+    val backgrounds: List<Bitmap>,
+    val logos: List<Bitmap>,
 )
 
 fun interface VideoExporter {

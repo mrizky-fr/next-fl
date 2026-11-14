@@ -32,7 +32,9 @@ import id.nextfl.core.util.Ids
 import id.nextfl.app.AppContainer
 import id.nextfl.app.audio.AudioDecodeException
 import id.nextfl.app.audio.LoadedAsset
+import id.nextfl.app.data.CollabImage
 import id.nextfl.app.data.VisualImage
+import id.nextfl.app.data.rotationImages
 import id.nextfl.app.platform.ExportTarget
 import id.nextfl.app.platform.Exporter
 import id.nextfl.app.platform.PickedFile
@@ -62,6 +64,8 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     val visualSettings: StateFlow<VisualSettings> = app.visuals.settings
     val background: StateFlow<android.graphics.Bitmap?> = app.visuals.background
     val logo: StateFlow<android.graphics.Bitmap?> = app.visuals.logo
+    val collabBackgrounds: StateFlow<List<CollabImage>> = app.visuals.collabBackgrounds
+    val collabLogos: StateFlow<List<CollabImage>> = app.visuals.collabLogos
     val toasts = app.messages.toasts
     val busy = app.messages.busy
     val ready = app.session.ready
@@ -310,7 +314,14 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
                     }
                 }
                 ensureActive()
-                val request = VideoRequest("nextfl-video-${timestamp()}.mp4", mix, aspect, visualSettings.value, background.value, logo.value)
+                val request = VideoRequest(
+                    "nextfl-video-${timestamp()}.mp4",
+                    mix,
+                    aspect,
+                    visualSettings.value,
+                    rotationImages(background.value, collabBackgrounds.value),
+                    rotationImages(logo.value, collabLogos.value),
+                )
                 video.export(
                     request,
                     track,
@@ -399,6 +410,30 @@ class EditorViewModel(private val app: AppContainer) : ViewModel() {
     fun removeImage(kind: VisualImage) {
         app.repository.deleteImage(kind)
         app.visuals.image(kind).value = null
+    }
+
+    // Collab extras rotate with main
+    fun addCollabImage(kind: VisualImage, file: PickedFile) {
+        if (app.visuals.collab(kind).value.size >= VisualSettings.MAX_COLLAB) {
+            app.messages.toast("Maksimal ${VisualSettings.MAX_COLLAB} gambar")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val image = app.repository.importCollab(kind, file)
+                app.visuals.collab(kind).update { it + image }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                android.util.Log.e(TAG, "Collab import failed", error)
+                app.messages.toast("Gambar tidak bisa dibaca", ToastTone.ERROR)
+            }
+        }
+    }
+
+    fun removeCollabImage(kind: VisualImage, id: String) {
+        app.repository.deleteCollab(kind, id)
+        app.visuals.collab(kind).update { list -> list.filterNot { it.id == id } }
     }
 
     fun onAppBackgrounded() = app.session.flush()

@@ -31,7 +31,7 @@ class AndroidVideoExporter(
             withContext(renderThread) {
                 MappedPcmSource(request.mix, sampleRate).use { audio ->
                     exporter.openDescriptor(output).use { descriptor ->
-                        VideoRenderer(plan, audio, request.settings, request.background, request.logo, typeface())
+                        VideoRenderer(plan, audio, request.settings, request.backgrounds, request.logos, typeface())
                             .render(descriptor.fileDescriptor, onProgress, isCancelled)
                     }
                 }

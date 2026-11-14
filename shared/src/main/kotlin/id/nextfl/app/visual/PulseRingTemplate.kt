@@ -19,8 +19,8 @@ import kotlin.random.Random
 
 /** Circular DJ logo badge. */
 class LogoBadge(typeface: Typeface) {
-    private var bitmap: Bitmap? = null
-    private var transparent = false
+    private var logos: List<Bitmap> = emptyList()
+    private var transparent = BooleanArray(0)
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val image = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -32,34 +32,48 @@ class LogoBadge(typeface: Typeface) {
     private val clip = Path()
     private val target = RectF()
 
-    fun set(next: Bitmap?) {
-        if (next === bitmap) return
-        bitmap = next
-        transparent = next?.let(::hasTransparentEdges) ?: false
+    fun set(next: List<Bitmap>) {
+        if (next == logos) return
+        logos = next
+        transparent = BooleanArray(next.size) { hasTransparentEdges(next[it]) }
     }
 
-    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, ringColor: Int) {
+    fun draw(canvas: Canvas, cx: Float, cy: Float, radius: Float, ringColor: Int, cycle: Rotation) {
         fill.color = Color.argb(110, 0, 0, 0)
         canvas.drawCircle(cx, cy, radius, fill)
         canvas.save()
         clip.reset()
         clip.addCircle(cx, cy, radius, Path.Direction.CW)
         canvas.clipPath(clip)
-        val logo = bitmap
-        if (logo == null) drawPlaceholder(canvas, cx, cy, radius) else drawLogo(canvas, logo, cx, cy, radius)
+        if (logos.isEmpty()) drawPlaceholder(canvas, cx, cy, radius) else crossfade(canvas, cx, cy, radius, cycle)
         canvas.restore()
         stroke.color = ringColor
         stroke.strokeWidth = radius * 0.03f
         canvas.drawCircle(cx, cy, radius, stroke)
     }
 
-    // Transparent logos fill circle
-    private fun drawLogo(canvas: Canvas, logo: Bitmap, cx: Float, cy: Float, radius: Float) {
+    // Opaque incoming covers outgoing
+    private fun crossfade(canvas: Canvas, cx: Float, cy: Float, radius: Float, cycle: Rotation) {
+        val current = cycle.current(logos.size)
+        val mix = cycle.mix(logos.size)
+        if (mix <= 0f) {
+            drawLogo(canvas, current, cx, cy, radius, 1f)
+            return
+        }
+        val next = cycle.next(logos.size)
+        drawLogo(canvas, current, cx, cy, radius, if (transparent[next]) 1f - mix else 1f)
+        drawLogo(canvas, next, cx, cy, radius, mix)
+    }
+
+    // Transparent logos fit circle
+    private fun drawLogo(canvas: Canvas, index: Int, cx: Float, cy: Float, radius: Float, alpha: Float) {
+        val logo = logos[index]
         val box = radius * 2
-        val scale = if (transparent) min(box / logo.width, box / logo.height) else max(box / logo.width, box / logo.height)
+        val scale = if (transparent[index]) min(box / logo.width, box / logo.height) else max(box / logo.width, box / logo.height)
         val w = logo.width * scale
         val h = logo.height * scale
         target.set(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+        image.alpha = (alpha.coerceIn(0f, 1f) * 255).roundToInt()
         canvas.drawBitmap(logo, null, target, image)
     }
 
@@ -89,7 +103,12 @@ class LogoBadge(typeface: Typeface) {
 /** Template one: pulse ring. */
 class PulseRingTemplate(typeface: Typeface) {
     private val sprite = GlowSprite()
-    private val background = BackgroundLayer()
+    // Current and incoming layers
+    private val backgrounds = arrayOf(BackgroundLayer(), BackgroundLayer())
+    private val wipe = WipeMask()
+    private val logoCycle = Rotation(LOGO_SECONDS, LOGO_FADE_SECONDS)
+    private val backgroundCycle = Rotation(BACKGROUND_SECONDS, BACKGROUND_FADE_SECONDS)
+    private var clock = 0.0
     private val particles = ParticleField()
     private val comets = CometField()
     private val hills = BeatHills()
@@ -112,7 +131,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private val socialIcons = SocialIcons()
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val flashPaint = Paint()
-    private var backgroundImage: Bitmap? = null
+    private var backgroundImages: List<Bitmap> = emptyList()
     private var shake = 0f
     private var flash = 0f
 
@@ -127,11 +146,13 @@ class PulseRingTemplate(typeface: Typeface) {
     private var kick = 0f
     private val drawScene: (Canvas) -> Unit = { scene(it) }
     private var titleSource = ""
-    private var titleUpper = ""
+    private var extraSource: List<String> = emptyList()
+    private var titleList: List<String> = emptyList()
 
-    fun setImages(background: Bitmap?, logoImage: Bitmap?) {
-        backgroundImage = background
-        logo.set(logoImage)
+    /** Lists rotate when longer than one. */
+    fun setImages(backgrounds: List<Bitmap>, logos: List<Bitmap>) {
+        backgroundImages = backgrounds
+        logo.set(logos)
     }
 
     fun draw(canvas: Canvas, width: Int, height: Int, frame: AudioFrame, dt: Float, settings: VisualSettings) {
@@ -156,6 +177,9 @@ class PulseRingTemplate(typeface: Typeface) {
 
     // State advances once per frame
     private fun update(frame: AudioFrame, dt: Float, settings: VisualSettings) {
+        clock += dt
+        logoCycle.at(clock)
+        backgroundCycle.at(clock)
         particles.update(settings.particleCount, dt, frame.energy, frame.kick)
         comets.update(if (settings.streaks) settings.cometCount else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.drive, dt)
@@ -169,11 +193,26 @@ class PulseRingTemplate(typeface: Typeface) {
         val particleColor = settings.particleColor.toInt()
         val bgX = shakeX * 0.5f
         val bgY = shakeY * 0.5f
-        background.draw(canvas, width, height, backgroundImage, settings, zoom, bgX, bgY, pendulum.angle, ripples)
+        drawBackground(canvas, bgX, bgY)
         ripples.drawCrests(canvas, width / 2f + bgX, height / 2f + bgY, settings.ringColor.toInt())
         particles.draw(canvas, sprite, width, height, particleColor, kick)
         comets.draw(canvas, particleColor, unit, settings.cometGlare)
         centerGroup(canvas)
+    }
+
+    // Incoming enters with soft edge
+    private fun drawBackground(canvas: Canvas, offsetX: Float, offsetY: Float) {
+        val images = backgroundImages
+        val count = images.size
+        val cycle = backgroundCycle
+        val front = if (count > 1) (cycle.slot and 1L).toInt() else 0
+        backgrounds[front].draw(canvas, width, height, images.getOrNull(cycle.current(count)), settings, zoom, offsetX, offsetY, pendulum.angle, ripples)
+        val mix = cycle.mix(count)
+        if (mix <= 0f) return
+        val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+        backgrounds[1 - front].draw(canvas, width, height, images[cycle.next(count)], settings, zoom, offsetX, offsetY, pendulum.angle, ripples)
+        wipe.apply(canvas, width, height, mix, settings.backgroundSlide)
+        canvas.restoreToCount(layer)
     }
 
     private fun centerGroup(canvas: Canvas) {
@@ -183,10 +222,11 @@ class PulseRingTemplate(typeface: Typeface) {
         val ringColor = settings.ringColor.toInt()
         val pulsed = radius * (1f + kick * LOGO_PULSE * settings.sensitivity)
         if (settings.showHills) hills.draw(canvas, cx, cy, pulsed, ringColor, settings.sensitivity, settings.hillGlare)
-        if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor)
+        if (settings.showLogo) logo.draw(canvas, cx, cy, pulsed, ringColor, logoCycle)
         val titleY = cy + radius * 1.72f
-        drawTitle(canvas, settings.title, cx, titleY, unit)
-        val socialY = if (settings.title.isBlank()) titleY - unit * TITLE_SIZE * 0.36f else titleY + unit * SOCIAL_BELOW_TITLE
+        val texts = titles()
+        drawTitles(canvas, texts, cx, titleY)
+        val socialY = if (texts.isEmpty()) titleY - unit * TITLE_SIZE * 0.36f else titleY + unit * SOCIAL_BELOW_TITLE
         if (settings.showSocial) drawSocial(canvas, cx, socialY)
     }
 
@@ -230,15 +270,35 @@ class PulseRingTemplate(typeface: Typeface) {
         flash = max(flash * exp(-dt * FLASH_DECAY), if (frame.beat) frame.beatStrength * FLASH_AMOUNT else 0f)
     }
 
-    private fun drawTitle(canvas: Canvas, text: String, x: Float, y: Float, unit: Float) {
-        if (text.isBlank()) return
-        title.textSize = unit * TITLE_SIZE
-        title.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb(160, 0, 0, 0))
-        if (text != titleSource) {
-            titleSource = text
-            titleUpper = text.uppercase()
+    // Rebuilt only when text changes
+    private fun titles(): List<String> {
+        if (settings.title != titleSource || settings.collabTexts != extraSource) {
+            titleSource = settings.title
+            extraSource = settings.collabTexts
+            titleList = (listOf(settings.title) + settings.collabTexts).filter { it.isNotBlank() }.map { it.uppercase() }
         }
-        canvas.drawText(titleUpper, x, y, title)
+        return titleList
+    }
+
+    // Swaps with logo: out, then in
+    private fun drawTitles(canvas: Canvas, texts: List<String>, x: Float, y: Float) {
+        val count = texts.size
+        if (count == 0) return
+        val mix = logoCycle.mix(count)
+        when {
+            mix <= 0f -> drawTitle(canvas, texts[logoCycle.current(count)], x, y, 1f)
+            mix < 0.5f -> drawTitle(canvas, texts[logoCycle.current(count)], x, y, 1f - mix * 2)
+            else -> drawTitle(canvas, texts[logoCycle.next(count)], x, y, mix * 2 - 1)
+        }
+    }
+
+    private fun drawTitle(canvas: Canvas, text: String, x: Float, y: Float, alpha: Float) {
+        val level = alpha.coerceIn(0f, 1f)
+        title.textSize = unit * TITLE_SIZE
+        title.color = Color.argb((level * 255).roundToInt(), 255, 255, 255)
+        // Translucent shadow ignores paint alpha
+        title.setShadowLayer(unit * 0.01f, 0f, 0f, Color.argb((level * SHADOW_ALPHA).roundToInt(), 0, 0, 0))
+        canvas.drawText(text, x, y, title)
     }
 
     private companion object {
@@ -254,5 +314,10 @@ class PulseRingTemplate(typeface: Typeface) {
         const val SOCIAL_GAP = 0.016f
         const val HANDLE_SIZE = 0.034f
         const val MIN_ICON_PX = 8
+        const val SHADOW_ALPHA = 160
+        const val LOGO_SECONDS = 4.0
+        const val LOGO_FADE_SECONDS = 0.8
+        const val BACKGROUND_SECONDS = 5.0
+        const val BACKGROUND_FADE_SECONDS = 1.2
     }
 }

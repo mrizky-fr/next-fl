@@ -1,8 +1,18 @@
 package id.nextfl.app.data
 
+import android.graphics.Bitmap
 import java.io.File
 
-enum class VisualImage(val fileName: String) { BACKGROUND("background.img"), LOGO("logo.img") }
+enum class VisualImage(val fileName: String, val collabDir: String) {
+    BACKGROUND("background.img", "collab-backgrounds"),
+    LOGO("logo.img", "collab-logos"),
+}
+
+/** Extra collab image, id is file name. */
+class CollabImage(val id: String, val bitmap: Bitmap)
+
+// Main image first, then extras
+fun rotationImages(main: Bitmap?, extras: List<CollabImage>): List<Bitmap> = listOfNotNull(main) + extras.map { it.bitmap }
 
 /** All on-device file locations. */
 class StoragePaths(filesDir: File, cacheDir: File) {
@@ -21,7 +31,19 @@ class StoragePaths(filesDir: File, cacheDir: File) {
 
     fun image(kind: VisualImage) = File(imagesDir, kind.fileName)
 
+    fun collabDir(kind: VisualImage) = File(imagesDir, kind.collabDir).apply { mkdirs() }
+
+    fun collabImage(kind: VisualImage, id: String) = File(collabDir(kind), "$id$IMAGE_SUFFIX")
+
+    // Ids are padded, so name order
+    fun collabImages(kind: VisualImage): List<File> =
+        collabDir(kind).listFiles { file -> file.name.endsWith(IMAGE_SUFFIX) }.orEmpty().sortedBy { it.name }
+
     fun clearAssets() {
         assetsDir.listFiles()?.forEach { it.delete() }
+    }
+
+    companion object {
+        const val IMAGE_SUFFIX = ".img"
     }
 }
