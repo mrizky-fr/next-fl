@@ -311,7 +311,7 @@ class PulseRingTemplate(typeface: Typeface) {
 
     private companion object {
         const val RING_RADIUS = 0.19f
-        const val SHAKE_AMOUNT = 0.03f
+        const val SHAKE_AMOUNT = 0.07f
         const val SHAKE_DECAY = 9f
         const val FLASH_DECAY = 8f
         const val FLASH_AMOUNT = 0.07f

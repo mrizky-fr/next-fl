@@ -91,8 +91,8 @@ class CameraMotion(seed: Int = SEED) {
         const val KEYFRAME_SECONDS = 3f
         const val ENGAGE_SECONDS = 0.4f
         const val IDLE = 0.001f
-        const val ZOOM_DECAY = 7f
-        const val MAX_BEAT_ZOOM = 0.15f
+        const val ZOOM_DECAY = 5f
+        const val MAX_BEAT_ZOOM = 0.35f
         const val MAX_KEYFRAME_ZOOM = 0.3f
         const val EPSILON = 0.0005f
     }
