@@ -112,6 +112,8 @@ object Sanitize {
         shakeAmount = settings.shakeAmount.coerceIn(FxRanges.UNIT),
         beatZoomAmount = settings.beatZoomAmount.coerceIn(FxRanges.UNIT),
         keyframeAmount = settings.keyframeAmount.coerceIn(FxRanges.UNIT),
+        keyframeBeat = settings.keyframeBeat.coerceIn(FxRanges.UNIT),
+        pendulumBeat = settings.pendulumBeat.coerceIn(FxRanges.UNIT),
         beatLow = settings.beatLow.coerceIn(FxRanges.UNIT),
         beatMid = settings.beatMid.coerceIn(FxRanges.UNIT),
         beatHigh = settings.beatHigh.coerceIn(FxRanges.UNIT),

@@ -1,6 +1,7 @@
 package id.nextfl.app.visual
 
 import android.graphics.Canvas
+import id.nextfl.core.analysis.BeatPace
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.random.Random
@@ -8,6 +9,7 @@ import kotlin.random.Random
 /** Beat zoom plus corner keyframes. */
 class CameraMotion(seed: Int = SEED) {
     private val random = Random(seed)
+    private val pace = BeatPace()
     private var punch = 0f
     private var engage = 0f
     private var from = 0
@@ -27,7 +29,7 @@ class CameraMotion(seed: Int = SEED) {
     var scale = 1f
         private set
 
-    fun update(beat: Boolean, strength: Float, zoom: Float, pan: Float, dt: Float) {
+    fun update(beat: Boolean, strength: Float, zoom: Float, pan: Float, panBeat: Float, dt: Float) {
         zoomAmount = zoom
         // Last amount eases out
         if (pan > 0f) panAmount = pan
@@ -36,7 +38,9 @@ class CameraMotion(seed: Int = SEED) {
         // Eases in and out on toggle
         val goal = if (pan > 0f) 1f else 0f
         engage += (goal - engage) * (1f - exp(-dt / ENGAGE_SECONDS))
-        if (pan > 0f) advance(dt) else if (engage < IDLE) running = false
+        // Beats push travel between corners
+        val step = pace.update(beat, strength, panBeat, dt)
+        if (pan > 0f) advance(step) else if (engage < IDLE) running = false
         val t = smooth(elapsed / KEYFRAME_SECONDS)
         panX = lerp(CORNER_X[from], CORNER_X[to], t) * engage
         panY = lerp(CORNER_Y[from], CORNER_Y[to], t) * engage

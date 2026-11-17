@@ -218,6 +218,9 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
         PanelSection("Efek beat") {
             ValueSlider("Riak", settings.rippleAmount, FxRanges.UNIT, { v -> update { it.copy(rippleAmount = v) } }, ::formatIntensity)
             ValueSlider("Pendulum", settings.pendulumAmount, FxRanges.UNIT, { v -> update { it.copy(pendulumAmount = v) } }, ::formatIntensity)
+            if (settings.pendulumAmount > 0f) {
+                ValueSlider("Pendulum ikut beat", settings.pendulumBeat, FxRanges.UNIT, { v -> update { it.copy(pendulumBeat = v) } }, ::formatIntensity)
+            }
             ValueSlider("Glitch", settings.glitchAmount, FxRanges.UNIT, { v -> update { it.copy(glitchAmount = v) } }, ::formatIntensity)
         }
         PanelSection("Cahaya") {
@@ -244,6 +247,7 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ToggleRow("Keyframe geser", settings.keyframePan, { on -> update { it.copy(keyframePan = on) } })
             if (settings.keyframePan) {
                 ValueSlider("Kuat keyframe", settings.keyframeAmount, FxRanges.UNIT, { v -> update { it.copy(keyframeAmount = v) } }, ::formatIntensity)
+                ValueSlider("Keyframe ikut beat", settings.keyframeBeat, FxRanges.UNIT, { v -> update { it.copy(keyframeBeat = v) } }, ::formatIntensity)
             }
         }
         PanelSection("Background") {

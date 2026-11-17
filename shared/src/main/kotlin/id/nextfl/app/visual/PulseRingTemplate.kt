@@ -189,11 +189,11 @@ class PulseRingTemplate(typeface: Typeface) {
         comets.update(if (settings.streaks) settings.cometCount else 0, dt, frame.beat, frame.beatStrength, frame.energy, width, height)
         if (settings.showHills) hills.update(frame.beat, frame.beatStrength, frame.drive, dt)
         ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
-        pendulum.update(frame.beat, settings.pendulumAmount, dt)
+        pendulum.update(frame.beat, frame.beatStrength, settings.pendulumAmount, settings.pendulumBeat, dt)
         glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)
         val zoomAmount = if (settings.beatZoom) settings.beatZoomAmount else 0f
         val panAmount = if (settings.keyframePan) settings.keyframeAmount else 0f
-        camera.update(frame.beat, frame.beatStrength, zoomAmount, panAmount, dt)
+        camera.update(frame.beat, frame.beatStrength, zoomAmount, panAmount, settings.keyframeBeat, dt)
     }
 
     // Pure drawing; ripple and swing hit background only

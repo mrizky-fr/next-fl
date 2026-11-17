@@ -6,7 +6,7 @@ import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import id.nextfl.core.analysis.BeatSwing
+import id.nextfl.core.analysis.BeatPace
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.min
@@ -89,20 +89,23 @@ class RippleField {
     }
 }
 
-/** Beat-locked swing, degrees. */
+/** Steady swing that beats speed up, degrees. */
 class Pendulum {
-    private val swing = BeatSwing()
+    private val pace = BeatPace()
+    private var phase = 0f
     var angle = 0f
         private set
 
-    fun update(beat: Boolean, amount: Float, dt: Float) {
-        swing.update(beat, dt)
-        angle = swing.value * MAX_DEGREES * amount
+    fun update(beat: Boolean, strength: Float, amount: Float, sensitivity: Float, dt: Float) {
+        phase = (phase + pace.update(beat, strength, sensitivity, dt) * TWO_PI / PERIOD_SECONDS) % TWO_PI
+        angle = sin(phase) * MAX_DEGREES * amount
     }
 
     private companion object {
         // Background only, keeps zoom small
         const val MAX_DEGREES = 10f
+        const val PERIOD_SECONDS = 3f
+        const val TWO_PI = 6.2831855f
     }
 }
 
