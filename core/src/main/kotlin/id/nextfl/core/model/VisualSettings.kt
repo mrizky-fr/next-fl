@@ -40,6 +40,11 @@ data class VisualSettings(
     val streaks: Boolean = true,
     val cometCount: Int = 6,
     val shake: Boolean = true,
+    val shakeAmount: Float = DEFAULT_AMOUNT,
+    val beatZoom: Boolean = false,
+    val beatZoomAmount: Float = DEFAULT_AMOUNT,
+    val keyframePan: Boolean = false,
+    val keyframeAmount: Float = DEFAULT_AMOUNT,
     val syncMs: Int = 100,
     val showLogo: Boolean = true,
     val showHills: Boolean = true,
@@ -75,5 +80,8 @@ data class VisualSettings(
         // Per kind, bounds bitmap memory
         const val MAX_COLLAB = 8
         const val DEFAULT_GLARE = 0.5f
+
+        // Half keeps old shake strength
+        const val DEFAULT_AMOUNT = 0.5f
     }
 }

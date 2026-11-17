@@ -115,6 +115,7 @@ class PulseRingTemplate(typeface: Typeface) {
     private val ripples = RippleField()
     private val pendulum = Pendulum()
     private val glitch = Glitch()
+    private val camera = CameraMotion()
     private val logo = LogoBadge(typeface)
     private val random = Random(3)
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -163,12 +164,16 @@ class PulseRingTemplate(typeface: Typeface) {
         unit = min(width, height).toFloat()
         kick = frame.kick
         react(frame, dt, settings)
-        shakeX = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
-        shakeY = (random.nextFloat() - 0.5f) * shake * unit * SHAKE_AMOUNT
+        val shakeReach = shake * unit * SHAKE_AMOUNT * settings.shakeAmount / VisualSettings.DEFAULT_AMOUNT
+        shakeX = (random.nextFloat() - 0.5f) * shakeReach
+        shakeY = (random.nextFloat() - 0.5f) * shakeReach
         zoom = 1f + frame.drive * 0.03f * settings.sensitivity + frame.kick * 0.02f
         update(frame, dt, settings)
+        val saved = canvas.save()
+        camera.apply(canvas, width, height)
         if (glitch.isSplitting) glitch.drawSplit(canvas, unit, settings.glitchAmount, drawScene) else scene(canvas)
         glitch.drawSlices(canvas, width, height, settings.ringColor.toInt(), settings.glitchGlare, drawScene)
+        canvas.restoreToCount(saved)
         if (flash > 0.01f) {
             flashPaint.color = Color.argb((flash * 255).toInt().coerceIn(0, 255), 255, 255, 255)
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), flashPaint)
@@ -186,6 +191,9 @@ class PulseRingTemplate(typeface: Typeface) {
         ripples.update(frame.beat, frame.beatStrength, settings.rippleAmount, dt, hypot(width.toFloat(), height.toFloat()) / 2, unit)
         pendulum.update(frame.beat, settings.pendulumAmount, dt)
         glitch.update(frame.beat, frame.beatStrength, settings.glitchAmount, dt)
+        val zoomAmount = if (settings.beatZoom) settings.beatZoomAmount else 0f
+        val panAmount = if (settings.keyframePan) settings.keyframeAmount else 0f
+        camera.update(frame.beat, frame.beatStrength, zoomAmount, panAmount, dt)
     }
 
     // Pure drawing; ripple and swing hit background only

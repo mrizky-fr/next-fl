@@ -234,6 +234,17 @@ private fun VisualSettingsPanel(vm: EditorViewModel, settings: VisualSettings, b
             ValueSlider("Jumlah partikel", settings.particleCount.toFloat(), 0f..200f, { v -> update { it.copy(particleCount = v.toInt()) } }, { it.toInt().toString() })
             ValueSlider("Jumlah komet", settings.cometCount.toFloat(), 0f..VisualSettings.MAX_COMETS.toFloat(), { v -> update { it.copy(cometCount = v.roundToInt()) } }, { it.roundToInt().toString() })
             ToggleRow("Goyang saat beat", settings.shake, { on -> update { it.copy(shake = on) } })
+            if (settings.shake) {
+                ValueSlider("Kuat goyang", settings.shakeAmount, FxRanges.UNIT, { v -> update { it.copy(shakeAmount = v) } }, ::formatIntensity)
+            }
+            ToggleRow("Zoom saat beat", settings.beatZoom, { on -> update { it.copy(beatZoom = on) } })
+            if (settings.beatZoom) {
+                ValueSlider("Kuat zoom", settings.beatZoomAmount, FxRanges.UNIT, { v -> update { it.copy(beatZoomAmount = v) } }, ::formatIntensity)
+            }
+            ToggleRow("Keyframe geser", settings.keyframePan, { on -> update { it.copy(keyframePan = on) } })
+            if (settings.keyframePan) {
+                ValueSlider("Kuat keyframe", settings.keyframeAmount, FxRanges.UNIT, { v -> update { it.copy(keyframeAmount = v) } }, ::formatIntensity)
+            }
         }
         PanelSection("Background") {
             ValueSlider("Gelap", settings.backgroundDim, 0f..0.95f, { v -> update { it.copy(backgroundDim = v) } }, { "${(it * 100).toInt()}%" })
