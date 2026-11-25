@@ -140,15 +140,25 @@ class BackgroundLayer {
             storeKey(image, width, height, settings)
         }
         val bitmap = cached ?: return
-        if (angle != 0f || ripple?.isActive == true) {
+        if (ripple?.isActive == true) {
             drawMesh(canvas, bitmap, width, height, zoom, offsetX, offsetY, angle, ripple)
             return
         }
+        // Swing alone is affine
+        val scale = if (angle != 0f) zoom * swingCover(angle, width, height) else zoom
         canvas.save()
         canvas.translate(width / 2f + offsetX, height / 2f + offsetY)
-        canvas.scale(zoom, zoom)
+        if (angle != 0f) canvas.rotate(angle)
+        canvas.scale(scale, scale)
         canvas.drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, paint)
         canvas.restore()
+    }
+
+    // Grow just enough to hide corners
+    private fun swingCover(angle: Float, width: Int, height: Int): Float {
+        val radians = Math.toRadians(angle.toDouble())
+        val aspect = max(width, height).toFloat() / min(width, height)
+        return max(1f, (abs(cos(radians)).toFloat() + aspect * abs(sin(radians)).toFloat()) / OVERSCAN)
     }
 
     // Primitive key, no per-frame allocation
@@ -170,9 +180,7 @@ class BackgroundLayer {
         val radians = Math.toRadians(angle.toDouble())
         val c = cos(radians).toFloat()
         val s = sin(radians).toFloat()
-        val aspect = max(width, height).toFloat() / min(width, height)
-        // Grow just enough to hide corners
-        val scale = zoom * max(1f, (abs(c) + aspect * abs(s)) / OVERSCAN)
+        val scale = zoom * swingCover(angle, width, height)
         val halfW = bitmap.width / 2f
         val halfH = bitmap.height / 2f
         val cx = width / 2f + offsetX
