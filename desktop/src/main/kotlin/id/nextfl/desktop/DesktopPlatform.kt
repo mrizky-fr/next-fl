@@ -14,6 +14,7 @@ import id.nextfl.desktop.audio.DesktopAudioDecoder
 import id.nextfl.desktop.audio.DesktopAudioDevice
 import id.nextfl.desktop.data.DesktopExporter
 import id.nextfl.desktop.data.FileTarget
+import id.nextfl.desktop.video.DesktopVideoExporter
 import android.util.Log
 import java.io.File
 import java.io.IOException
@@ -29,8 +30,8 @@ class DesktopPlatform : Platform {
     override val images = imageCodec
     override val canvasFonts by lazy { CanvasFonts(loadFont("inter_semibold.ttf"), loadFont("inter_bold.ttf")) }
 
-    // MP4 export comes with ffmpeg
-    override val video: VideoExporter? = null
+    // Media Foundation, no extra DLL
+    override val video: VideoExporter = DesktopVideoExporter(exporter, AppContainer.SAMPLE_RATE) { canvasFonts.bold }
     override val shareLabel = "Buka folder"
 
     override fun share(target: ExportTarget): Boolean = try {

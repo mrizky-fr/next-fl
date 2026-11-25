@@ -14,6 +14,9 @@ val commitCount: Int = runCatching {
         .standardOutput.asText.get().trim().toInt()
 }.getOrDefault(1)
 
+// Media Foundation calls via FFM
+val NATIVE_ACCESS = "--enable-native-access=ALL-UNNAMED"
+
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -51,19 +54,20 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    jvmArgs(NATIVE_ACCESS)
 }
 
-// Installer JDK must ship jpackage
+// JDK 25: jpackage, final FFM
 val packaging = gradle.startParameter.taskNames.any { it.contains("package", ignoreCase = true) || it.contains("Distributable") }
 val packagingJdk = javaToolchains.launcherFor {
-    languageVersion.set(JavaLanguageVersion.of(21))
+    languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 compose.desktop {
     application {
         mainClass = "id.nextfl.desktop.MainKt"
         if (packaging) javaHome = packagingJdk.get().metadata.installationPath.asFile.absolutePath
-        jvmArgs += listOf("-Dnextfl.version=0.1.$commitCount")
+        jvmArgs += listOf("-Dnextfl.version=0.1.$commitCount", NATIVE_ACCESS)
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
             packageName = "NextFL"

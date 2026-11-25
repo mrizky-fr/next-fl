@@ -94,7 +94,7 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
 
 Windows 11 dengan **Smart App Control** aktif memblokir aplikasi yang belum bertanda tangan digital, termasuk `NextFL.exe` dan installer MSI, dan tidak menyediakan pilihan **Run anyway**. Di PC seperti itu, pakai versi portable lewat `Jalankan NextFL.bat`. File itu menjalankan NextFL dengan `javaw.exe` yang bertanda tangan resmi dari Eclipse Foundation, jadi tidak ikut diblokir. Versi portable tetap menyimpan proyek di `%APPDATA%\NextFL` pada PC yang dipakai.
 
-Di Windows, Spasi memutar dan menjeda, Ctrl+Z membatalkan, dan Ctrl+Y mengulang. Hasil export masuk ke `Music\NextFL`, dan tombol **Buka folder** menunjukkan file-nya. MP3 dan WAV langsung bisa dibuka. M4A, OGG, FLAC, dan Opus butuh [ffmpeg](https://ffmpeg.org/download.html) terpasang di PATH. Export video MP4 baru ada di Android.
+Di Windows, Spasi memutar dan menjeda, Ctrl+Z membatalkan, dan Ctrl+Y mengulang. Audio hasil export masuk ke `Music\NextFL` dan video MP4 ke `Videos\NextFL`, dan tombol **Buka folder** menunjukkan file-nya. MP3 dan WAV langsung bisa dibuka. M4A, OGG, FLAC, dan Opus butuh [ffmpeg](https://ffmpeg.org/download.html) terpasang di PATH. Video di-encode H.264 + AAC lewat Media Foundation bawaan Windows, tanpa DLL tambahan, jadi tidak diblokir Smart App Control.
 
 ## Dibangun Dengan
 
@@ -128,7 +128,7 @@ Project terbagi empat bagian:
 | `core/` | Kotlin murni: model, edit, undo/redo, DSP (EQ, stereoizer, reverb FDN, limiter, WSOLA real-time, efek DJ, FFT), mix engine, deteksi BPM dan beat. |
 | `shared/` | Folder sumber yang dikompilasi oleh `app/` dan `desktop/`: semua layar Compose, ViewModel, playback controller, penyimpanan proyek, dan template visual (`android.graphics`). Hal yang beda per OS lewat kontrak di `shared/.../platform/Platform.kt`. |
 | `app/` | Android: decode `MediaCodec`, playback `AudioTrack` + audio focus, export MediaStore, pemilih file, dan render video H.264 + AAC. |
-| `desktop/` | Windows (Compose Desktop): decode MP3 (JLayer), WAV/AIFF (Java Sound), format lain lewat `ffmpeg` bila terpasang, playback Java Sound, export ke folder Music, dialog file Windows (FileKit), dan lapisan `android.graphics` di atas Skia supaya visualizer dan timeline digambar oleh kode yang sama. |
+| `desktop/` | Windows (Compose Desktop): decode MP3 (JLayer), WAV/AIFF (Java Sound), format lain lewat `ffmpeg` bila terpasang, playback Java Sound, export audio ke folder Music, render video MP4 lewat Media Foundation (dipanggil dengan Java FFM API), dialog file Windows (FileKit), dan lapisan `android.graphics` di atas Skia supaya visualizer dan timeline digambar oleh kode yang sama. |
 
 Versi Windows dijalankan dan dikemas dengan:
 
@@ -137,7 +137,7 @@ Versi Windows dijalankan dan dikemas dengan:
 .\gradlew.bat :desktop:packageReleaseMsi :desktop:packageReleasePortable
 ```
 
-Installer dibuat di `desktop/build/compose/binaries/main-release/msi/`, lalu disalin menimpa [`release/NextFL-Setup.msi`](release/NextFL-Setup.msi). Versi portable dibuat di `desktop/build/compose/binaries/main-release/portable/NextFL-Portable.zip` dan disalin ke [`release/NextFL-Portable.zip`](release/NextFL-Portable.zip). ZIP itu berisi app image yang sama dengan installer, ditambah `javaw.exe` dari JDK yang sama dan `Jalankan NextFL.bat` yang dibuat dari `NextFL.cfg`, jadi classpath dan opsi JVM-nya selalu cocok. Gradle mengunduh JDK 21 sekali (lewat toolchain foojay) karena `jpackage` tidak ada di JBR Android Studio, dan WiX diunduh otomatis oleh plugin Compose. ProGuard hanya membuang kelas yang tidak dipakai (tanpa obfuscation). Untuk mengecek build rilis tanpa membuka jendela: `NextFL.exe --self-test <file.mp3> <laporan.txt>`.
+Installer dibuat di `desktop/build/compose/binaries/main-release/msi/`, lalu disalin menimpa [`release/NextFL-Setup.msi`](release/NextFL-Setup.msi). Versi portable dibuat di `desktop/build/compose/binaries/main-release/portable/NextFL-Portable.zip` dan disalin ke [`release/NextFL-Portable.zip`](release/NextFL-Portable.zip). ZIP itu berisi app image yang sama dengan installer, ditambah `javaw.exe` dari JDK yang sama dan `Jalankan NextFL.bat` yang dibuat dari `NextFL.cfg`, jadi classpath dan opsi JVM-nya selalu cocok. Gradle mengunduh JDK 25 sekali (lewat toolchain foojay) karena `jpackage` tidak ada di JBR Android Studio, dan WiX diunduh otomatis oleh plugin Compose. ProGuard hanya membuang kelas yang tidak dipakai (tanpa obfuscation). Untuk mengecek build rilis tanpa membuka jendela: `NextFL.exe --self-test <file.mp3> <laporan.txt>`.
 
 Tidak ada API key. Kredensial tanda tangan rilis dibaca dari environment variable, atau dari `keystore.properties` bila variabelnya tidak diset. Salin [`keystore.properties.example`](keystore.properties.example) menjadi `keystore.properties`, lalu isi nilainya. Keystore dan file itu tidak di-commit. Tanpa keystore, build rilis tetap jalan tetapi APK-nya tidak bertanda tangan.
 
@@ -154,7 +154,7 @@ Lokasi SDK diatur Android Studio di `local.properties` (tidak di-commit).
 
 ## Catatan
 
-APK, installer Windows, dan ZIP portable di tombol unduh adalah **build rilis**, bukan rilis Play Store atau Microsoft Store. APK-nya bertanda tangan, versi Windows belum. Semuanya selalu ditimpa versi terbaru, dan versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies. Di Windows, proyek tersimpan di `%APPDATA%\NextFL`. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)). Versi Windows memakai [JLayer](http://www.javazoom.net/javalayer/javalayer.html) untuk decode MP3 (juga LGPL 2.1, teks lisensi yang sama), [FileKit](https://github.com/vinceglb/filekit) (MIT), dan JNA (Apache 2.0).
+APK, installer Windows, dan ZIP portable di tombol unduh adalah **build rilis**, bukan rilis Play Store atau Microsoft Store. APK-nya bertanda tangan, versi Windows belum. Semuanya selalu ditimpa versi terbaru, dan versinya naik otomatis setiap commit. Bila sebelumnya memasang build debug, hapus dulu sebelum memasang rilis. Proyek, audio, logo, dan background tersimpan di penyimpanan aplikasi; hasil export masuk ke folder Music dan Movies (Videos di Windows). Di Windows, proyek tersimpan di `%APPDATA%\NextFL`. Font Inter dipakai di bawah SIL Open Font License (lihat [`licenses/Inter-OFL.txt`](licenses/Inter-OFL.txt)). Export MP3 memakai [jump3r](https://git.iem.at/sciss/jump3r), port Java dari LAME, di bawah LGPL 2.1 (lihat [`licenses/jump3r-LGPL-2.1.txt`](licenses/jump3r-LGPL-2.1.txt)). Versi Windows memakai [JLayer](http://www.javazoom.net/javalayer/javalayer.html) untuk decode MP3 (juga LGPL 2.1, teks lisensi yang sama), [FileKit](https://github.com/vinceglb/filekit) (MIT), dan JNA (Apache 2.0).
 
 ## Pembuat
 
