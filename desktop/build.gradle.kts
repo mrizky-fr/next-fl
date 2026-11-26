@@ -65,6 +65,12 @@ val packagingJdk = javaToolchains.launcherFor {
     vendor.set(JvmVendorSpec.ADOPTIUM)
 }
 
+// Filled by extractJdkClasses
+val jdkLibraryRules = layout.buildDirectory.file("jdk-library.pro").get().asFile.also { rules ->
+    rules.parentFile.mkdirs()
+    if (!rules.exists()) rules.writeText("")
+}
+
 compose.desktop {
     application {
         mainClass = "id.nextfl.desktop.MainKt"
@@ -90,10 +96,33 @@ compose.desktop {
         buildTypes.release.proguard {
             isEnabled.set(true)
             obfuscate.set(false)
-            configurationFiles.from(project.file("proguard-rules.pro"))
+            configurationFiles.from(project.file("proguard-rules.pro"), jdkLibraryRules)
         }
     }
 }
+
+// JDK 25 ships no jmods
+val jdkClasses = layout.buildDirectory.dir("jdk-classes")
+val extractJdkClasses by tasks.registering(Exec::class) {
+    val home = packagingJdk.map { it.metadata.installationPath.asFile.absolutePath }
+    inputs.property("jdk", home)
+    outputs.dir(jdkClasses)
+    outputs.file(jdkLibraryRules)
+    doFirst {
+        jdkClasses.get().asFile.deleteRecursively()
+        executable = "${home.get()}/bin/jimage"
+        args("extract", "--dir", jdkClasses.get().asFile.absolutePath, "${home.get()}/lib/modules")
+    }
+    // One entry per module root
+    doLast {
+        val modules = jdkClasses.get().asFile.listFiles { file -> file.isDirectory }.orEmpty().sortedBy { it.name }
+        jdkLibraryRules.writeText(modules.joinToString(System.lineSeparator(), postfix = System.lineSeparator()) {
+            "-libraryjars '${it.invariantSeparatorsPath}'(!module-info.class)"
+        })
+    }
+}
+
+tasks.matching { it.name.startsWith("proguard") }.configureEach { dependsOn(extractJdkClasses) }
 
 val releaseImage = layout.buildDirectory.dir("compose/binaries/main-release/app")
 val portableLauncher = layout.buildDirectory.dir("portable-launcher")
