@@ -79,7 +79,7 @@ private fun Editor(vm: EditorViewModel) {
                 AppView.PLAYLIST -> PlaylistScreen(vm, state, ui, playing)
                 AppView.MIXER -> MixerScreen(vm, state)
                 AppView.VISUAL -> VisualScreen(vm, ui, playing)
-                AppView.SPLIT -> SplitScreen(vm, state, ui, playing)
+                AppView.SPLIT -> SplitScreen(vm, state, playing)
             }
             if (ui.libraryOpen && !fullscreenVisual) LibraryPanel(vm, state.assets.values.toList())
         }

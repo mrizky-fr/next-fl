@@ -33,5 +33,3 @@ fun TimelineStrip(vm: EditorViewModel, state: EditorState, ui: UiState, playing:
     }
 }
 
-/** Ruler plus one lane. */
-val SingleLaneHeight = (TimelineMetrics.RULER_DP + TimelineMetrics.ROW_DP).dp

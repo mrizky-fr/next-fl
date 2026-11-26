@@ -70,17 +70,21 @@ fun rememberAudioImporter(vm: EditorViewModel): () -> Unit =
 fun BottomBar(vm: EditorViewModel, ui: UiState, selectedClipId: String?) {
     val density = LocalDensity.current.density
     val importAudio = rememberAudioImporter(vm)
-    val timelineView = ui.view == AppView.PLAYLIST || ui.view == AppView.SPLIT
+    val timelineView = ui.view == AppView.PLAYLIST
+    // No lane: clip tools hidden
+    val clipTools = ui.view != AppView.SPLIT
     Scaled(BOTTOM_BAR_SCALE) {
         Box(Modifier.fillMaxWidth().height(Dimens.ToolbarHeight).background(Palette.Surface).padding(horizontal = 8.dp)) {
             ToolGroup(Modifier.align(Alignment.CenterStart)) {
                 IconAction(Icons.Rounded.Add, "Audio", importAudio, variant = ButtonVariant.ACCENT, showLabel = true)
                 IconAction(Icons.Rounded.LibraryMusic, "Library", { vm.updateUi { it.copy(libraryOpen = !it.libraryOpen) } }, active = ui.libraryOpen)
-                ToolbarGap()
-                val hasClip = selectedClipId != null
-                IconAction(Icons.Rounded.ContentCut, "Potong di playhead", { selectedClipId?.let(vm::splitClipAtPlayhead) }, enabled = hasClip)
-                IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
-                IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
+                if (clipTools) {
+                    ToolbarGap()
+                    val hasClip = selectedClipId != null
+                    IconAction(Icons.Rounded.ContentCut, "Potong di playhead", { selectedClipId?.let(vm::splitClipAtPlayhead) }, enabled = hasClip)
+                    IconAction(Icons.Rounded.ContentCopy, "Duplikat", { selectedClipId?.let(vm::duplicateClip) }, enabled = hasClip)
+                    IconAction(Icons.Rounded.Delete, "Hapus klip", { selectedClipId?.let(vm::removeClip) }, enabled = hasClip)
+                }
             }
             if (timelineView) {
                 ToolGroup(Modifier.align(Alignment.Center)) {

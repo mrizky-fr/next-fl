@@ -66,15 +66,25 @@ private class Metrics(width: Dp, height: Dp) {
     val pad = (height * 0.03f).coerceIn(5.dp, 14.dp)
     val gap = (height * 0.018f).coerceIn(3.dp, 10.dp)
     val inner = height - pad * 2
-    val compact = inner < 300.dp
-    val strip = if (compact) (inner * 0.36f).coerceIn(70.dp, 96.dp) else (inner * 0.14f).coerceIn(46.dp, 74.dp)
-    val center = min(width * 0.34f, inner * 0.60f * SCREEN_RATIO)
+    val compact = inner < 340.dp
+    val strip = (inner * 0.14f).coerceIn(46.dp, 74.dp)
+    val center = min(width * 0.30f, inner * 0.50f * SCREEN_RATIO)
     val deck = (width - pad * 2 - gap * 4 - strip * 2 - center) / 2
-    val header = (inner * 0.10f).coerceIn(22.dp, 40.dp)
-    val bottom = (inner * 0.30f).coerceIn(56.dp, 120.dp)
+    val header = (inner * 0.09f).coerceIn(22.dp, 40.dp)
+    val bottom = (inner * 0.28f).coerceIn(56.dp, 120.dp)
     val side = (deck * 0.17f).coerceIn(44.dp, 78.dp)
     val tempo = (deck * 0.13f).coerceIn(34.dp, 56.dp)
     val corner = (height * 0.03f).coerceIn(6.dp, 16.dp)
+
+    // Deck room left for jog
+    private val deckInner = deck - gap * 2
+    private val middle = inner - header - bottom - gap * 4
+    val keyRow = (side * 1.2f).coerceAtMost(84.dp)
+    private val sideJog = min(deckInner - side - tempo - gap * 2, middle)
+    private val topJog = min(deckInner - tempo - gap, middle - keyRow - gap)
+
+    // Pioneer style: keys above jog
+    val keysOnTop = topJog > sideJog
 }
 
 /** Two-deck 3D controller, screen center. */
@@ -122,23 +132,42 @@ private fun DeckSection(vm: EditorViewModel, info: DeckInfo, playing: Boolean, h
     val clip = info.clip
     Column(modifier.plate(m.corner).padding(m.gap), verticalArrangement = Arrangement.spacedBy(m.gap)) {
         DeckHeader(info, Modifier.fillMaxWidth().height(m.header))
+        val key: @Composable (Dp, Boolean) -> Unit = { size, showValue ->
+            HardKnob(
+                label = "KEY",
+                value = clip?.pitchSemitones?.toFloat() ?: 0f,
+                range = FxRanges.PITCH,
+                default = 0f,
+                onChange = { v -> clip?.let { DeckActions.setKey(vm, it, v) } },
+                format = ::formatSemitones,
+                size = size,
+                bipolar = true,
+                enabled = clip != null,
+                showValue = showValue,
+            )
+        }
+        val keyLock: @Composable (Modifier) -> Unit = { button ->
+            LedButton("KEY LOCK", clip?.keepPitch == true, { clip?.let { DeckActions.toggleKeyLock(vm, it) } }, button, enabled = clip != null)
+        }
+        val sync: @Composable (Modifier) -> Unit = { button ->
+            LedButton("SYNC", clip?.syncTempo == true, { clip?.let { DeckActions.toggleSync(vm, it) } }, button, enabled = clip != null && info.assetBpm != null)
+        }
+        if (m.keysOnTop) {
+            Row(Modifier.fillMaxWidth().height(m.keyRow), horizontalArrangement = Arrangement.spacedBy(m.gap), verticalAlignment = Alignment.CenterVertically) {
+                key(m.keyRow * 0.62f, true)
+                val button = Modifier.weight(1f).height((m.keyRow * 0.5f).coerceAtMost(34.dp))
+                keyLock(button)
+                sync(button)
+            }
+        }
         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(m.gap)) {
-            Column(Modifier.width(m.side).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
-                HardKnob(
-                    label = "KEY",
-                    value = clip?.pitchSemitones?.toFloat() ?: 0f,
-                    range = FxRanges.PITCH,
-                    default = 0f,
-                    onChange = { v -> clip?.let { DeckActions.setKey(vm, it, v) } },
-                    format = ::formatSemitones,
-                    size = m.side * 0.72f,
-                    bipolar = true,
-                    enabled = clip != null,
-                    showValue = true,
-                )
-                val button = Modifier.fillMaxWidth().height((m.side * 0.42f).coerceAtMost(30.dp))
-                LedButton("KEY LOCK", clip?.keepPitch == true, { clip?.let { DeckActions.toggleKeyLock(vm, it) } }, button, enabled = clip != null)
-                LedButton("SYNC", clip?.syncTempo == true, { clip?.let { DeckActions.toggleSync(vm, it) } }, button, enabled = clip != null && info.assetBpm != null)
+            if (!m.keysOnTop) {
+                Column(Modifier.width(m.side).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
+                    key(m.side * 0.72f, true)
+                    val button = Modifier.fillMaxWidth().height((m.side * 0.42f).coerceAtMost(30.dp))
+                    keyLock(button)
+                    sync(button)
+                }
             }
             BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                 DeckJog(vm, info, playing, Modifier.size(min(maxWidth, maxHeight)))
@@ -245,7 +274,7 @@ private fun GatePads(vm: EditorViewModel, held: SnapshotStateList<Double>, m: Me
 private fun ChannelStrip(vm: EditorViewModel, info: DeckInfo, m: Metrics, modifier: Modifier) {
     val track = info.track
     val clip = info.clip
-    val knob = if (m.compact) m.strip * 0.34f else m.strip * 0.6f
+    val knob = m.strip * (if (m.compact) 0.5f else 0.6f)
     val showValue = !m.compact
     val trim: @Composable () -> Unit = {
         HardKnob("TRIM", clip?.gainDb ?: 0f, TRIM_RANGE, 0f, { v -> clip?.let { DeckActions.setTrim(vm, it, v) } }, ::formatDb, knob, bipolar = true, enabled = clip != null, showValue = showValue)
@@ -265,20 +294,8 @@ private fun ChannelStrip(vm: EditorViewModel, info: DeckInfo, m: Metrics, modifi
         )
     }
     Column(modifier.plate(m.corner).padding(vertical = m.gap), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(m.gap * 0.5f)) {
-        if (m.compact) {
-            // Short screens: 2x2 knobs
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                trim()
-                eq(EqBand.HI)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                eq(EqBand.MID)
-                eq(EqBand.LOW)
-            }
-        } else {
-            trim()
-            EqBand.entries.forEach { eq(it) }
-        }
+        trim()
+        EqBand.entries.forEach { eq(it) }
         Row(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             HardFader(
                 position = AudioMath.dbToFader(track?.volumeDb ?: 0f),
