@@ -61,6 +61,8 @@ tasks.test {
 val packaging = gradle.startParameter.taskNames.any { it.contains("package", ignoreCase = true) || it.contains("Distributable") }
 val packagingJdk = javaToolchains.launcherFor {
     languageVersion.set(JavaLanguageVersion.of(25))
+    // JBR lacks jpackage and jmods
+    vendor.set(JvmVendorSpec.ADOPTIUM)
 }
 
 compose.desktop {
