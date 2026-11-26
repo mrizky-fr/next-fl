@@ -68,7 +68,7 @@ class TimelineGestures(
     private val viewport get() = vm.viewport
     private val metrics get() = geometry.metrics
 
-    // Mode Ngonten shows one row
+    // NextDJ shows one row
     private val singleLane get() = height - metrics.rulerHeight < SINGLE_LANE_ROWS * metrics.rowHeight
 
     fun bind(state: EditorState, snap: SnapMode, width: Float, height: Float, lockPan: Boolean) {

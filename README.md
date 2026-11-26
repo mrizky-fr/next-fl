@@ -4,11 +4,11 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=1000&color=0465C4&center=true&vCenter=true&width=640&lines=Edit+%26+remix+lagu+di+HP+dan+PC;Visual+DJ+yang+bergerak+ikut+beat;Export+WAV%2C+MP3+%26+video+MP4+siap+upload" alt="Edit & remix lagu di HP dan PC" />
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.83-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.84-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.83-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.84-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.83-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.84-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
 <sub>Android 10+ · ±3,5 MB &nbsp;|&nbsp; Windows 10/11 64-bit · installer ±53 MB, portable ±51 MB &nbsp;|&nbsp; Gratis</sub>
 
@@ -51,7 +51,7 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <h3>Mode Ngonten</h3>
+      <h3>NextDJ</h3>
       Controller DJ 3D memenuhi layar. Deck 1 dan 2 (track 1 dan 2) masing-masing punya jog wheel, slider tempo ±16%, knob KEY, KEY LOCK, SYNC, CUE/PLAY, dan 8 pad Beat Gate yang aktif selama ditahan. Di tengah ada layar preview visual 16:9, mixer TRIM/HI/MID/LOW dan fader per channel, plus knob Filter, Echo, Flanger, Crush, dan Master.
     </td>
     <td width="50%" valign="top">
@@ -65,11 +65,11 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
 
 <div align="center">
 
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.83-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL.apk"><img src="https://img.shields.io/badge/Android-APK%200.1.84-0465C4?style=for-the-badge" alt="Download APK Android" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.83-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Setup.msi"><img src="https://img.shields.io/badge/Windows-Installer%200.1.84-0465C4?style=for-the-badge" alt="Download installer Windows" height="42" /></a>
 &nbsp;
-<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.83-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
+<a href="https://raw.githubusercontent.com/mrizky-fr/next-fl/main/release/NextFL-Portable.zip"><img src="https://img.shields.io/badge/Windows-Portable%200.1.84-0465C4?style=for-the-badge" alt="Download Windows portable" height="42" /></a>
 
 </div>
 

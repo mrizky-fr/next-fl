@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 
-enum class AppView(val label: String) { PLAYLIST("Playlist"), MIXER("Mixer"), VISUAL("NextPlayer"), SPLIT("Mode Ngonten") }
+enum class AppView(val label: String) { PLAYLIST("Playlist"), MIXER("Mixer"), VISUAL("NextPlayer"), SPLIT("NextDJ") }
 
 enum class SnapMode(val label: String, val beats: Double) {
     BAR("Bar", 4.0),

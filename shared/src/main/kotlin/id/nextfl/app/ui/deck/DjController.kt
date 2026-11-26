@@ -1,6 +1,8 @@
 package id.nextfl.app.ui.deck
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import id.nextfl.app.editor.EditorViewModel
+import id.nextfl.app.ui.LogoGlyph
+import id.nextfl.app.ui.PioneerDjLogo
 import id.nextfl.app.ui.playlist.formatDb
 import id.nextfl.app.ui.playlist.formatSemitones
 import id.nextfl.app.ui.visual.VisualizerCanvas
@@ -335,15 +340,34 @@ private fun CenterSection(vm: EditorViewModel, state: EditorState, m: Metrics, m
                 }
             }
         }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().plate(m.corner).padding(m.gap), contentAlignment = Alignment.Center) {
-            val knob = min((maxWidth - 24.dp) / 5.6f, maxHeight * 0.5f).coerceIn(24.dp, 84.dp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                HardKnob("FILTER", dj.filter, FxRanges.BIPOLAR, 0f, { v -> vm.updateDj("filter") { it.copy(filter = v) } }, ::formatFilter, knob, bipolar = true, showValue = !m.compact)
-                HardKnob("ECHO", dj.echo, FxRanges.UNIT, 0f, { v -> vm.updateDj("echo") { it.copy(echo = v) } }, ::formatAmount, knob, showValue = !m.compact)
-                HardKnob("FLANGER", dj.flanger, FxRanges.UNIT, 0f, { v -> vm.updateDj("flanger") { it.copy(flanger = v) } }, ::formatAmount, knob, showValue = !m.compact)
-                HardKnob("CRUSH", dj.crush, FxRanges.UNIT, 0f, { v -> vm.updateDj("crush") { it.copy(crush = v) } }, ::formatAmount, knob, showValue = !m.compact)
-                HardKnob("MASTER", state.doc.masterDb, MASTER_RANGE, 0f, vm::setMasterDb, ::formatDb, knob, bipolar = true, showValue = !m.compact)
-                LevelMeter(vm::masterLevel, Modifier.width(6.dp).height(knob * 1.4f))
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().plate(m.corner).padding(m.gap)) {
+            val panelWidth = maxWidth
+            val brandHeight = (maxHeight * 0.14f).coerceIn(16.dp, 30.dp)
+            val pioneerHeight = (maxHeight * 0.11f).coerceIn(14.dp, 22.dp)
+            val labelRoom = if (m.compact) 12.dp else 24.dp
+            val knob = min((panelWidth - 24.dp) / 5.6f, maxHeight - brandHeight - pioneerHeight - labelRoom).coerceIn(18.dp, 84.dp)
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.height(brandHeight), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(brandHeight * 0.8f).clip(RoundedCornerShape(4.dp)).background(ArtColors.LedDeep), contentAlignment = Alignment.Center) {
+                        Image(LogoGlyph, contentDescription = null, modifier = Modifier.size(brandHeight * 0.6f))
+                    }
+                    Text("NextDJ", style = printStyle((brandHeight.value * 0.53f).coerceIn(10f, 16f).sp, ArtColors.Print).copy(fontWeight = FontWeight.Bold), maxLines = 1)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    HardKnob("FILTER", dj.filter, FxRanges.BIPOLAR, 0f, { v -> vm.updateDj("filter") { it.copy(filter = v) } }, ::formatFilter, knob, bipolar = true, showValue = !m.compact)
+                    HardKnob("ECHO", dj.echo, FxRanges.UNIT, 0f, { v -> vm.updateDj("echo") { it.copy(echo = v) } }, ::formatAmount, knob, showValue = !m.compact)
+                    HardKnob("FLANGER", dj.flanger, FxRanges.UNIT, 0f, { v -> vm.updateDj("flanger") { it.copy(flanger = v) } }, ::formatAmount, knob, showValue = !m.compact)
+                    HardKnob("CRUSH", dj.crush, FxRanges.UNIT, 0f, { v -> vm.updateDj("crush") { it.copy(crush = v) } }, ::formatAmount, knob, showValue = !m.compact)
+                    HardKnob("MASTER", state.doc.masterDb, MASTER_RANGE, 0f, vm::setMasterDb, ::formatDb, knob, bipolar = true, showValue = !m.compact)
+                    LevelMeter(vm::masterLevel, Modifier.width(6.dp).height(knob * 1.4f))
+                }
+                Box(Modifier.fillMaxWidth().height(pioneerHeight), contentAlignment = Alignment.CenterStart) {
+                    Image(
+                        PioneerDjLogo,
+                        contentDescription = "Pioneer DJ",
+                        modifier = Modifier.offset(x = panelWidth * 0.10f).width(panelWidth * 0.40f).height(pioneerHeight),
+                    )
+                }
             }
         }
     }
