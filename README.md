@@ -52,7 +52,7 @@ Semuanya berjalan **offline** di HP atau PC. Tidak perlu akun, tidak perlu serve
   <tr>
     <td width="50%" valign="top">
       <h3>Mode Ngonten</h3>
-      Satu track di atas, controller DJ 3D selebar layar di bawahnya. Deck 1 dan 2 (track 1 dan 2) masing-masing punya jog wheel, slider tempo ±16%, knob KEY, KEY LOCK, SYNC, CUE/PLAY, dan 8 pad Beat Gate yang aktif selama ditahan. Di tengah ada layar preview visual 16:9, mixer TRIM/HI/MID/LOW dan fader per channel, plus knob Filter, Echo, Flanger, Crush, dan Master.
+      Controller DJ 3D memenuhi layar. Deck 1 dan 2 (track 1 dan 2) masing-masing punya jog wheel, slider tempo ±16%, knob KEY, KEY LOCK, SYNC, CUE/PLAY, dan 8 pad Beat Gate yang aktif selama ditahan. Di tengah ada layar preview visual 16:9, mixer TRIM/HI/MID/LOW dan fader per channel, plus knob Filter, Echo, Flanger, Crush, dan Master.
     </td>
     <td width="50%" valign="top">
       <h3>Export sekali ketuk</h3>
