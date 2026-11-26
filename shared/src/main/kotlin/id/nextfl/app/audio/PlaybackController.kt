@@ -40,6 +40,7 @@ class PlaybackController(
 
     init {
         engine.looping = true
+        engine.liveDocProvider = { store.current.doc }
         observeProject()
     }
 
@@ -126,6 +127,11 @@ class PlaybackController(
 
     /** Keeps frames rendered before audible. */
     fun requestRenderAhead(frames: Int) = tuning.requestAhead(frames)
+
+    /** Keep pad actions close to the speaker while NextDJ is open. */
+    fun setDjMode(enabled: Boolean) {
+        tuning.liveDj = enabled
+    }
 
     fun audibleTrackPeak(trackId: String): Float = if (isPlaying.value) engine.trackPeakAt(trackId, audibleOutputFrame()) else 0f
 

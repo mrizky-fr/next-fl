@@ -30,6 +30,7 @@ private class DesktopAudioStream(
     private val line: SourceDataLine = AudioSystem.getSourceDataLine(format).apply { open(format, CAPACITY_FRAMES * BYTES_PER_FRAME) }
     private val capacityFrames = line.bufferSize / BYTES_PER_FRAME
     private var blocks = 0L
+    private var djBaseFrames = DesktopBuffer.djStartFrames(engine.sampleRate)
 
     @Volatile
     private var active = true
@@ -80,12 +81,14 @@ private class DesktopAudioStream(
 
     private fun wantedFrames(): Int {
         val ahead = tuning.aheadFrames(System.nanoTime())
-        return maxOf(tuning.baseFrames, ahead).coerceIn(BLOCK_FRAMES * 2, capacityFrames)
+        val base = if (tuning.liveDj) djBaseFrames else tuning.baseFrames
+        return maxOf(base, ahead).coerceIn(BLOCK_FRAMES * 2, capacityFrames)
     }
 
     private fun checkUnderrun() {
         if (blocks < WARMUP_BLOCKS) return
-        tuning.baseFrames = DesktopBuffer.grownBase(tuning.baseFrames, queuedFrames(), capacityFrames)
+        if (tuning.liveDj) djBaseFrames = DesktopBuffer.grownBase(djBaseFrames, queuedFrames(), capacityFrames)
+        else tuning.baseFrames = DesktopBuffer.grownBase(tuning.baseFrames, queuedFrames(), capacityFrames)
     }
 
     private fun queuedFrames(): Long = framesWritten - line.longFramePosition
@@ -126,11 +129,15 @@ private class DesktopAudioStream(
 
 /** Queue sizing for Java Sound. */
 internal object DesktopBuffer {
-    // DirectSound stutters below ~100 ms
+    // Normal playback covers DirectSound; NextDJ starts shorter and grows on underruns.
     private const val START_SECONDS = 0.12
+    private const val DJ_START_SECONDS = 0.08
 
     fun startFrames(sampleRate: Int): Int =
         ceil(sampleRate * START_SECONDS / AudioStream.BLOCK_FRAMES).toInt() * AudioStream.BLOCK_FRAMES
+
+    fun djStartFrames(sampleRate: Int): Int =
+        ceil(sampleRate * DJ_START_SECONDS / AudioStream.BLOCK_FRAMES).toInt() * AudioStream.BLOCK_FRAMES
 
     // Grow before queue runs dry
     fun grownBase(base: Int, queued: Long, capacity: Int): Int =

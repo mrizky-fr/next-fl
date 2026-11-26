@@ -1,5 +1,6 @@
 package id.nextfl.core.engine
 
+import id.nextfl.core.model.FxChain
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -21,9 +22,11 @@ class TrackProcessor(private val sampleRate: Int, maxBlock: Int) {
         right.fill(0f, 0, frames)
     }
 
-    fun process(params: TrackParams, frames: Int) {
-        chain.process(params.fx, left, right, frames)
-        val blockPeak = applyGain(params, frames)
+    fun process(params: TrackParams, frames: Int) = process(params.fx, params.gain, params.pan, frames)
+
+    fun process(fx: FxChain, gain: Float, pan: Float, frames: Int) {
+        chain.process(fx, left, right, frames)
+        val blockPeak = applyGain(gain, pan, frames)
         peak = if (blockPeak.isFinite()) blockPeak else recover(frames)
     }
 
@@ -35,9 +38,9 @@ class TrackProcessor(private val sampleRate: Int, maxBlock: Int) {
     }
 
     // Linear ramp avoids zipper noise
-    private fun applyGain(params: TrackParams, frames: Int): Float {
-        val targetL = params.gain * if (params.pan > 0) 1 - params.pan else 1f
-        val targetR = params.gain * if (params.pan < 0) 1 + params.pan else 1f
+    private fun applyGain(gain: Float, pan: Float, frames: Int): Float {
+        val targetL = gain * if (pan > 0) 1 - pan else 1f
+        val targetR = gain * if (pan < 0) 1 + pan else 1f
         val stepL = (targetL - gainL) / frames
         val stepR = (targetR - gainR) / frames
         var blockPeak = 0f

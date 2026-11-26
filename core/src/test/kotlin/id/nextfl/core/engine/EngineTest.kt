@@ -4,6 +4,7 @@ import id.nextfl.core.TestSignals
 import id.nextfl.core.analysis.SpectrumAnalyzer
 import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.Defaults
+import id.nextfl.core.pcm.ArrayPcmSource
 import id.nextfl.core.pcm.ArrayStereoSink
 import id.nextfl.core.pcm.PcmSource
 import kotlin.math.abs
@@ -75,6 +76,59 @@ class EngineTest {
         }
         assertTrue(left.copyOfRange(beat / 8, beat * 3 / 8).maxOf { abs(it) } > 0.3f, "open half silent")
         assertTrue(left.copyOfRange(beat * 5 / 8, beat * 7 / 8).maxOf { abs(it) } < 1e-3f, "closed half audible")
+    }
+
+    @Test
+    fun changingDeckRateKeepsTheCurrentSourceSample() {
+        val ramp = FloatArray(rate * 3) { it * 0.8f / (rate * 3) }
+        val source = ArrayPcmSource(ramp, ramp.copyOf(), rate)
+        val base = Defaults.project().copy(bpm = 120.0)
+        val track = base.tracks[0]
+        val clip = Defaults.clip(track.id, "ramp", "Ramp", 0.0, 3.0).copy(keepPitch = false)
+        val assetMap = mapOf("ramp" to AudioAsset("ramp", "Ramp", 3.0, null))
+        fun graph(speed: Double) = RenderGraphBuilder.build(
+            base.copy(tracks = listOf(track), clips = listOf(clip.copy(speed = speed))),
+            assetMap, rate, SourceResolver { source },
+        )
+        val engine = MixEngine(rate, 512)
+        engine.setGraph(graph(1.0))
+        engine.resetOutputClock(0)
+        val out = FloatArray(1024)
+        repeat(rate / 2 / 512) { engine.renderInterleaved(out, 512) }
+        val before = out[2 * 511]
+        engine.setGraph(graph(0.84))
+        engine.renderInterleaved(out, 512)
+        val after = out[2 * 90]
+        assertTrue(abs(after - before) < 0.002f, "rate change jumped from $before to $after")
+        engine.seek(0)
+        engine.renderInterleaved(out, 512)
+        assertTrue(abs(out[2 * 90]) < 0.01f, "seek retained live tempo offset")
+    }
+
+    @Test
+    fun liveMixerControlsApplyBeforeGraphRebuild() {
+        val graph = graph(startBeat = 0.0)
+        var liveDoc = graph.sourceDoc!!
+        val engine = MixEngine(rate, 512)
+        engine.liveDocProvider = { liveDoc }
+        engine.setGraph(graph)
+        engine.resetOutputClock(0)
+        val out = FloatArray(1024)
+        fun peakAfter(blocks: Int): Float {
+            repeat(blocks) { engine.renderInterleaved(out, 512) }
+            return out.maxOf { abs(it) }
+        }
+        val normal = peakAfter(20)
+        liveDoc = liveDoc.copy(masterDb = -24f)
+        val quietMaster = peakAfter(5)
+        assertTrue(quietMaster < normal * 0.1f, "master change waited for graph: $normal -> $quietMaster")
+        liveDoc = liveDoc.copy(masterDb = 0f, tracks = liveDoc.tracks.map { it.copy(volumeDb = -24f) })
+        val quietTrack = peakAfter(5)
+        assertTrue(quietTrack < normal * 0.1f, "track fader waited for graph: $normal -> $quietTrack")
+        liveDoc = liveDoc.copy(tracks = graph.sourceDoc.tracks, dj = liveDoc.dj.copy(filter = -1f))
+        val filtered = peakAfter(25)
+        assertTrue(filtered < normal * 0.6f, "filter waited for graph: $normal -> $filtered")
+        assertTrue(engine.currentGraph === graph)
     }
 
     @Test

@@ -30,6 +30,7 @@ class ClipVoice(
     val sourceStart: Double,
     val step: Double,
     val envelope: ClipEnvelope,
+    val clipGain: Float = 1f,
     // Per-frame read rate inside grains
     val grainStep: Double = step,
     val granular: Boolean = false,
@@ -45,6 +46,7 @@ class RenderGraph(
     val masterFx: FxChain = FxChain(),
     val dj: DjSettings = DjSettings(),
     val bpm: Double = ProjectDoc.DEFAULT_BPM,
+    val sourceDoc: ProjectDoc? = null,
 ) {
     companion object {
         val EMPTY = RenderGraph(emptyList(), emptyList(), 1f, 0, 0)
@@ -79,7 +81,8 @@ object RenderGraphBuilder {
                 source = original,
                 sourceStart = clip.offset * sourceRate,
                 step = span.rate * ratio,
-                envelope = ClipEnvelope(span.duration, AudioMath.dbToGain(clip.gainDb).toDouble(), clip.fadeIn, clip.fadeOut),
+                envelope = ClipEnvelope(span.duration, 1.0, clip.fadeIn, clip.fadeOut),
+                clipGain = AudioMath.dbToGain(clip.gainDb),
                 grainStep = voicing.pitch * ratio,
                 granular = voicing.needsStretch,
             )
@@ -97,6 +100,7 @@ object RenderGraphBuilder {
             masterFx = doc.masterFx,
             dj = doc.dj,
             bpm = doc.bpm,
+            sourceDoc = doc,
         )
     }
 }

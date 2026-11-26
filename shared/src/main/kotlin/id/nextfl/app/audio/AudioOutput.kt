@@ -34,6 +34,9 @@ class OutputTuning {
     var baseFrames = 0
 
     @Volatile
+    var liveDj = false
+
+    @Volatile
     private var requestedAhead = 0
 
     @Volatile
@@ -45,9 +48,13 @@ class OutputTuning {
         requestedAtNanos = System.nanoTime()
     }
 
-    fun aheadFrames(nowNanos: Long): Int = if (nowNanos - requestedAtNanos > AHEAD_EXPIRY_NANOS) 0 else requestedAhead
+    fun aheadFrames(nowNanos: Long): Int {
+        if (nowNanos - requestedAtNanos > AHEAD_EXPIRY_NANOS) return 0
+        return if (liveDj) requestedAhead.coerceAtMost(DJ_AHEAD_FRAMES) else requestedAhead
+    }
 
     private companion object {
         const val AHEAD_EXPIRY_NANOS = 500_000_000L
+        const val DJ_AHEAD_FRAMES = AudioStream.BLOCK_FRAMES * 2
     }
 }

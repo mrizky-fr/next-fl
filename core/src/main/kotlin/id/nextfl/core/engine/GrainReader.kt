@@ -36,9 +36,9 @@ internal class GrainReader(sampleRate: Int) {
     }
 
     // Two Hann grains, half overlap
-    fun sample(voice: ClipVoice, state: State, local: Long) {
+    fun sample(voice: ClipVoice, state: State, local: Long, sourceOffset: Double) {
         val k = Math.floorDiv(local, hop.toLong())
-        if (k != state.index) advance(voice, state, k)
+        if (k != state.index) advance(voice, state, k, sourceOffset)
         val u = (local - k * hop).toInt()
         val a = state.current + u * state.currentStep
         val b = state.previous + (u + hop) * state.previousStep
@@ -49,33 +49,33 @@ internal class GrainReader(sampleRate: Int) {
     }
 
     // Step frozen per grain: no clicks
-    private fun advance(voice: ClipVoice, state: State, k: Long) {
+    private fun advance(voice: ClipVoice, state: State, k: Long, sourceOffset: Double) {
         val step = voice.grainStep
         if (k == state.index + 1) {
             state.previous = state.current
             state.previousStep = state.currentStep
         } else {
-            state.previous = ideal(voice, k - 1)
+            state.previous = ideal(voice, k - 1, sourceOffset)
             state.previousStep = step
         }
         state.currentStep = step
         state.index = k
         if (k <= 0L) {
-            startAtClipOffset(voice, state)
+            startAtClipOffset(voice, state, sourceOffset)
             return
         }
         val continuation = state.previous + hop * state.previousStep
-        state.current = align(voice, ideal(voice, k), continuation, state.previousStep)
+        state.current = align(voice, ideal(voice, k, sourceOffset), continuation, state.previousStep)
     }
 
     // Twin grains: exact source, no fade
-    private fun startAtClipOffset(voice: ClipVoice, state: State) {
-        state.current = voice.sourceStart
-        state.previous = voice.sourceStart - hop * state.currentStep
+    private fun startAtClipOffset(voice: ClipVoice, state: State, sourceOffset: Double) {
+        state.current = voice.sourceStart + sourceOffset
+        state.previous = state.current - hop * state.currentStep
         state.previousStep = state.currentStep
     }
 
-    private fun ideal(voice: ClipVoice, k: Long) = voice.sourceStart + k * hop * voice.step
+    private fun ideal(voice: ClipVoice, k: Long, sourceOffset: Double) = voice.sourceStart + k * hop * voice.step + sourceOffset
 
     // Best match to previous continuation
     private fun align(voice: ClipVoice, ideal: Double, continuation: Double, previousStep: Double): Double {
@@ -92,7 +92,8 @@ internal class GrainReader(sampleRate: Int) {
         val range = 2 * seek
         val earliest = (ceil(voice.sourceStart).toInt() - base).coerceIn(0, range)
         var best = max(seek, earliest)
-        var bestScore = Double.NEGATIVE_INFINITY
+        // Silence yields equal scores everywhere; keep the expected timing.
+        var bestScore = similarity(best)
         var offset = earliest
         while (offset <= range) {
             val score = similarity(offset)

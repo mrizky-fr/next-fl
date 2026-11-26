@@ -17,6 +17,7 @@ class PlaybackSession(
     private val timestamp = AudioTimestamp()
     private val capacityFrames = track.bufferCapacityInFrames.coerceAtLeast(BLOCK_FRAMES)
     private var appliedFrames = 0
+    private var djBaseFrames = startFrames(engine.sampleRate)
     private var lastUnderruns = 0
     private var blocks = 0L
     private var pipelineFrames = 0f
@@ -75,12 +76,14 @@ class PlaybackSession(
             lastUnderruns = underruns
         } else if (underruns > lastUnderruns) {
             lastUnderruns = underruns
-            tuning.baseFrames = (tuning.baseFrames + BLOCK_FRAMES).coerceAtMost(capacityFrames)
+            if (tuning.liveDj) djBaseFrames = (djBaseFrames + BLOCK_FRAMES).coerceAtMost(capacityFrames)
+            else tuning.baseFrames = (tuning.baseFrames + BLOCK_FRAMES).coerceAtMost(capacityFrames)
         }
         if (blocks % PIPELINE_EVERY == 0L) measurePipeline()
         // Device latency already gives lookahead
         val ahead = (tuning.aheadFrames(System.nanoTime()) - pipelineFrames.toInt()).coerceAtLeast(0)
-        val wanted = maxOf(tuning.baseFrames, ahead).coerceIn(BLOCK_FRAMES, capacityFrames)
+        val base = if (tuning.liveDj) djBaseFrames else tuning.baseFrames
+        val wanted = maxOf(base, ahead).coerceIn(BLOCK_FRAMES, capacityFrames)
         if (wanted != appliedFrames) {
             track.setBufferSizeInFrames(wanted)
             appliedFrames = wanted

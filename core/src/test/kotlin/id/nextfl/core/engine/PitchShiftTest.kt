@@ -5,8 +5,11 @@ import id.nextfl.core.model.AudioAsset
 import id.nextfl.core.model.Clip
 import id.nextfl.core.model.Defaults
 import id.nextfl.core.pcm.ArrayStereoSink
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,5 +88,36 @@ class PitchShiftTest {
         val result = render { it.copy(speed = 1.5, keepPitch = false) }
         assertEquals(2.0 / 1.5, result.seconds, 1e-3)
         assertNear(660.0, result.frequency, 0.02, "frequency")
+    }
+
+    @Test
+    fun slowedDrumHitsStayNearTheirExpectedTime() {
+        val data = FloatArray(sampleRate * 3)
+        for (beat in 1..4) {
+            val start = beat * sampleRate / 2
+            for (i in 0 until sampleRate / 100) {
+                val t = i.toDouble() / sampleRate
+                data[start + i] = (0.8 * sin(2 * PI * 300 * t) * exp(-t * 300)).toFloat()
+            }
+        }
+        val source = TestSignals.stereo(data, sampleRate)
+        val base = Defaults.project().copy(bpm = 120.0)
+        val track = base.tracks[0]
+        val clip = Defaults.clip(track.id, "drums", "Drums", 0.0, 3.0).copy(speed = 0.84)
+        val graph = RenderGraphBuilder.build(
+            base.copy(tracks = listOf(track), clips = listOf(clip)),
+            mapOf("drums" to AudioAsset("drums", "Drums", 3.0, 120.0)),
+            sampleRate, SourceResolver { source },
+        )
+        val sink = ArrayStereoSink()
+        OfflineRenderer.render(graph, sampleRate, sink)
+        val output = sink.toSource(sampleRate)
+        for (beat in 1..4) {
+            val expected = (beat * sampleRate / 2 / 0.84).toInt()
+            val radius = sampleRate / 25
+            val peak = (expected - radius..expected + radius).maxBy { abs(output.left(it)) }
+            assertTrue(abs(output.left(peak)) > 0.1f, "beat $beat was lost")
+            assertTrue(abs(peak - expected) < sampleRate / 100, "beat $beat shifted by ${peak - expected} frames")
+        }
     }
 }

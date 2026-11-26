@@ -52,9 +52,17 @@ class BeatGateTest {
     }
 
     @Test
-    fun phaseFollowsSongPosition() {
+    fun pressOpensImmediatelyAtAnySongPosition() {
         val output = run(1.0, beat / 4, start = beat / 2L)
-        assertEquals(0f, output[beat / 8], 1e-3f)
+        assertEquals(level, output[beat / 8], 1e-3f)
+    }
+
+    @Test
+    fun changingDivisionStartsWithOpenHalf() {
+        val gate = BeatGate(rate)
+        run(1.0, beat * 3 / 4, gate = gate)
+        val output = run(0.25, beat / 8, start = beat * 3 / 4L, gate = gate)
+        assertEquals(level, output[beat / 16], 1e-3f)
     }
 
     @Test

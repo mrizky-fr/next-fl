@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -66,6 +65,8 @@ private const val OFF = 0.01f
 private val TRIM_RANGE = -24f..24f
 private val MASTER_RANGE = -24f..6f
 
+private data class GateHold(val deck: Int, val beats: Double, val bpm: Double)
+
 /** Sizes derived from available space. */
 private class Metrics(width: Dp, height: Dp) {
     val pad = (height * 0.03f).coerceIn(5.dp, 14.dp)
@@ -98,8 +99,14 @@ fun DjController(vm: EditorViewModel, state: EditorState, playing: Boolean, modi
     val playhead by rememberPlayhead(vm)
     val left = deckInfo(state, 1, playhead)
     val right = deckInfo(state, 2, playhead)
-    val held = remember { mutableStateListOf<Double>() }
-    DisposableEffect(Unit) { onDispose { vm.setGate(BeatGate.OFF) } }
+    val held = remember { mutableStateListOf<GateHold>() }
+    DisposableEffect(vm) {
+        vm.setDjMode(true)
+        onDispose {
+            vm.setGate(BeatGate.OFF)
+            vm.setDjMode(false)
+        }
+    }
     BoxWithConstraints(modifier) {
         val m = Metrics(maxWidth, maxHeight)
         Canvas(Modifier.fillMaxSize()) {
@@ -107,11 +114,11 @@ fun DjController(vm: EditorViewModel, state: EditorState, playing: Boolean, modi
             drawChassis(Rect(inset, inset, size.width - inset, size.height - inset), m.corner.toPx())
         }
         Row(Modifier.fillMaxSize().padding(m.pad), horizontalArrangement = Arrangement.spacedBy(m.gap)) {
-            DeckSection(vm, left, playing, held, m, Modifier.width(m.deck).fillMaxHeight())
+            DeckSection(vm, left, state.doc.bpm, playing, held, m, Modifier.width(m.deck).fillMaxHeight())
             ChannelStrip(vm, left, m, Modifier.width(m.strip).fillMaxHeight())
             CenterSection(vm, state, m, Modifier.width(m.center).fillMaxHeight())
             ChannelStrip(vm, right, m, Modifier.width(m.strip).fillMaxHeight())
-            DeckSection(vm, right, playing, held, m, Modifier.width(m.deck).fillMaxHeight())
+            DeckSection(vm, right, state.doc.bpm, playing, held, m, Modifier.width(m.deck).fillMaxHeight())
         }
     }
 }
@@ -133,7 +140,7 @@ private fun rememberPlayhead(vm: EditorViewModel): State<Double> {
 private fun Modifier.plate(corner: Dp) = drawBehind { drawPlate(Rect(0f, 0f, size.width, size.height), corner.toPx()) }
 
 @Composable
-private fun DeckSection(vm: EditorViewModel, info: DeckInfo, playing: Boolean, held: SnapshotStateList<Double>, m: Metrics, modifier: Modifier) {
+private fun DeckSection(vm: EditorViewModel, info: DeckInfo, projectBpm: Double, playing: Boolean, held: SnapshotStateList<GateHold>, m: Metrics, modifier: Modifier) {
     val clip = info.clip
     Column(modifier.plate(m.corner).padding(m.gap), verticalArrangement = Arrangement.spacedBy(m.gap)) {
         DeckHeader(info, Modifier.fillMaxWidth().height(m.header))
@@ -183,7 +190,7 @@ private fun DeckSection(vm: EditorViewModel, info: DeckInfo, playing: Boolean, h
             val round = min(m.bottom * 0.85f, m.deck * 0.17f).coerceAtMost(88.dp)
             RoundDeckButton("CUE", ArtColors.Cue, !playing && info.isLive, { DeckActions.cue(vm, info, playing) }, Modifier.size(round))
             RoundDeckButton("PLAY", ArtColors.Play, playing, vm::togglePlay, Modifier.size(round), playGlyph = true)
-            GatePads(vm, held, m, Modifier.weight(1f).fillMaxHeight())
+            GatePads(vm, info, projectBpm, held, m, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -246,7 +253,12 @@ private fun TempoColumn(vm: EditorViewModel, info: DeckInfo, m: Metrics, modifie
 
 // Last held pad wins
 @Composable
-private fun GatePads(vm: EditorViewModel, held: SnapshotStateList<Double>, m: Metrics, modifier: Modifier) {
+private fun GatePads(vm: EditorViewModel, info: DeckInfo, projectBpm: Double, held: SnapshotStateList<GateHold>, m: Metrics, modifier: Modifier) {
+    val gateBpm = info.bpm ?: projectBpm * info.rate
+    val active = held.lastOrNull()
+    LaunchedEffect(gateBpm, active) {
+        if (active?.deck == info.number) vm.setGate(active.beats, gateBpm)
+    }
     val rows = if (m.bottom >= 56.dp) 2 else 1
     val perRow = GATE_PADS.size / rows
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -257,15 +269,16 @@ private fun GatePads(vm: EditorViewModel, held: SnapshotStateList<Double>, m: Me
                     HoldPad(
                         label = label,
                         color = ArtColors.Led,
-                        active = held.lastOrNull() == beats,
+                        active = active?.deck == info.number && active.beats == beats,
                         onPress = {
-                            held.remove(beats)
-                            held.add(beats)
-                            vm.setGate(beats)
+                            held.removeAll { it.deck == info.number && it.beats == beats }
+                            held.add(GateHold(info.number, beats, gateBpm))
+                            vm.setGate(beats, gateBpm)
                         },
                         onRelease = {
-                            held.remove(beats)
-                            vm.setGate(held.lastOrNull() ?: BeatGate.OFF)
+                            held.removeAll { it.deck == info.number && it.beats == beats }
+                            val next = held.lastOrNull()
+                            vm.setGate(next?.beats ?: BeatGate.OFF, next?.bpm ?: 0.0)
                         },
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                     )
@@ -361,11 +374,11 @@ private fun CenterSection(vm: EditorViewModel, state: EditorState, m: Metrics, m
                     HardKnob("MASTER", state.doc.masterDb, MASTER_RANGE, 0f, vm::setMasterDb, ::formatDb, knob, bipolar = true, showValue = !m.compact)
                     LevelMeter(vm::masterLevel, Modifier.width(6.dp).height(knob * 1.4f))
                 }
-                Box(Modifier.fillMaxWidth().height(pioneerHeight), contentAlignment = Alignment.CenterStart) {
+                Box(Modifier.fillMaxWidth().height(pioneerHeight), contentAlignment = Alignment.Center) {
                     Image(
                         PioneerDjLogo,
                         contentDescription = "Pioneer DJ",
-                        modifier = Modifier.offset(x = panelWidth * 0.10f).width(panelWidth * 0.40f).height(pioneerHeight),
+                        modifier = Modifier.width(panelWidth * 0.40f).height(pioneerHeight),
                     )
                 }
             }

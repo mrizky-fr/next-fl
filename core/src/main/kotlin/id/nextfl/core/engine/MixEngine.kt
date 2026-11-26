@@ -3,7 +3,10 @@ package id.nextfl.core.engine
 import id.nextfl.core.dsp.BeatGate
 import id.nextfl.core.dsp.DjEffects
 import id.nextfl.core.dsp.Limiter
+import id.nextfl.core.edit.TrackOps
+import id.nextfl.core.model.ProjectDoc
 import id.nextfl.core.pcm.PcmSource
+import id.nextfl.core.util.AudioMath
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 import kotlin.math.floor
@@ -27,6 +30,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private val trackSlots = ArrayList<TrackProcessor>()
     private var voiceTargets = arrayOfNulls<TrackProcessor>(0)
     private var voiceStates = arrayOfNulls<GrainReader.State>(0)
+    private var voiceOffsets = DoubleArray(0)
     private var syncedGraph: RenderGraph? = null
     private val masterL = FloatArray(maxBlock)
     private val masterR = FloatArray(maxBlock)
@@ -55,6 +59,14 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     @Volatile
     var gateBeats = BeatGate.OFF
 
+    /** Active deck tempo; zero uses the project tempo. */
+    @Volatile
+    var gateBpm = 0.0
+
+    /** Latest editor controls while an immutable render graph is being rebuilt. */
+    @Volatile
+    var liveDocProvider: (() -> ProjectDoc)? = null
+
     val currentGraph: RenderGraph get() = graph
 
     fun setGraph(next: RenderGraph) {
@@ -71,6 +83,7 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         songFrame = max(0L, startSongFrame)
         outputFrame = 0
         segments = longArrayOf(0L, songFrame)
+        voiceOffsets.fill(0.0)
         tap.reset()
         processors.values.forEach { it.history.reset() }
         masterHistory.reset()
@@ -117,9 +130,10 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
         applySeek()
         val current = graph
         if (syncedGraph !== current) syncGraph(current)
+        val liveDoc = liveDocProvider?.invoke()?.takeUnless { it === current.sourceDoc }
         for (index in 0 until trackSlots.size) trackSlots[index].clear(frames)
-        mixVoices(current, frames)
-        mixTracks(current, frames)
+        mixVoices(current, liveDoc, frames)
+        mixTracks(current, liveDoc, frames)
         if (copy) {
             masterL.copyInto(left, 0, 0, frames)
             masterR.copyInto(right, 0, 0, frames)
@@ -143,16 +157,31 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
 
     private fun jumpTo(frame: Long) {
         songFrame = frame
+        voiceOffsets.fill(0.0)
         segments = (segments + longArrayOf(outputFrame, frame)).takeLast(MAX_SEGMENTS * 2).toLongArray()
     }
 
     // Allocates only on graph swap
     private fun syncGraph(current: RenderGraph) {
+        val previousVoices = syncedGraph?.voices.orEmpty()
+        val previousOffsets = voiceOffsets
+        val previousById = previousVoices.indices.associateBy { previousVoices[it].id }
         val ids = current.tracks.mapTo(HashSet()) { it.id }
         processors.keys.retainAll(ids)
         trackSlots.clear()
         for (params in current.tracks) trackSlots.add(processors.getOrPut(params.id) { TrackProcessor(sampleRate, maxBlock) })
         val voices = current.voices
+        voiceOffsets = DoubleArray(voices.size) { index ->
+            val voice = voices[index]
+            val oldIndex = previousById[voice.id] ?: return@DoubleArray 0.0
+            val old = previousVoices[oldIndex]
+            if (old.source !== voice.source || old.sourceStart != voice.sourceStart) return@DoubleArray 0.0
+            val oldOffset = previousOffsets[oldIndex]
+            if (old.step == voice.step && old.startFrame == voice.startFrame) return@DoubleArray oldOffset
+            if (old.step == voice.step || songFrame !in old.startFrame until old.endFrame || songFrame !in voice.startFrame until voice.endFrame) return@DoubleArray 0.0
+            // Keep the current source sample when a live tempo change rebuilds the graph.
+            oldOffset + (songFrame - old.startFrame) * old.step - (songFrame - voice.startFrame) * voice.step
+        }
         grainStates.keys.retainAll(voices.mapTo(HashSet()) { it.id })
         voiceTargets = Array(voices.size) { processors[voices[it].trackId] }
         voiceStates = Array(voices.size) { grainState(voices[it]) }
@@ -162,57 +191,65 @@ class MixEngine(val sampleRate: Int, private val maxBlock: Int = MAX_BLOCK) {
     private fun grainState(voice: ClipVoice): GrainReader.State? =
         if (voice.granular) grainStates.getOrPut(voice.id) { GrainReader.State() } else null
 
-    private fun mixVoices(current: RenderGraph, frames: Int) {
+    private fun mixVoices(current: RenderGraph, liveDoc: ProjectDoc?, frames: Int) {
         val blockStart = songFrame
         val blockEnd = blockStart + frames
         val voices = current.voices
         for (index in 0 until voices.size) {
             val voice = voices[index]
             if (voice.endFrame <= blockStart || voice.startFrame >= blockEnd) continue
+            val clipGain = if (liveDoc == null) voice.clipGain else
+                liveDoc.clips.firstOrNull { it.id == voice.id }?.let { AudioMath.dbToGain(it.gainDb) } ?: 0f
+            if (clipGain == 0f) continue
             val target = voiceTargets[index] ?: continue
             val state = voiceStates[index]
             val from = max(0L, voice.startFrame - blockStart).toInt()
             val to = min(frames.toLong(), voice.endFrame - blockStart).toInt()
             for (i in from until to) {
                 val local = blockStart + i - voice.startFrame
-                val gain = voice.envelope.valueAt(local.toDouble() / sampleRate).toFloat()
+                val gain = voice.envelope.valueAt(local.toDouble() / sampleRate).toFloat() * clipGain
                 if (gain == 0f) continue
                 if (state != null) {
-                    grains.sample(voice, state, local)
+                    grains.sample(voice, state, local, voiceOffsets[index])
                     target.left[i] += grains.left * gain
                     target.right[i] += grains.right * gain
                     continue
                 }
-                val position = voice.sourceStart + local * voice.step
+                val position = voice.sourceStart + local * voice.step + voiceOffsets[index]
                 target.left[i] += Interpolator.left(voice.source, position) * gain
                 target.right[i] += Interpolator.right(voice.source, position) * gain
             }
         }
     }
 
-    private fun mixTracks(current: RenderGraph, frames: Int) {
+    private fun mixTracks(current: RenderGraph, liveDoc: ProjectDoc?, frames: Int) {
         masterL.fill(0f, 0, frames)
         masterR.fill(0f, 0, frames)
         val tracks = current.tracks
         for (index in 0 until tracks.size) {
             val processor = trackSlots[index]
-            processor.process(tracks[index], frames)
+            val params = tracks[index]
+            val liveTrack = liveDoc?.tracks?.firstOrNull { it.id == params.id }
+            val gain = if (liveDoc == null) params.gain else if (liveTrack != null && TrackOps.isAudible(liveTrack, liveDoc.tracks))
+                AudioMath.dbToGain(liveTrack.volumeDb) else 0f
+            processor.process(liveTrack?.fx ?: params.fx, gain, liveTrack?.pan ?: params.pan, frames)
             for (i in 0 until frames) {
                 masterL[i] += processor.left[i]
                 masterR[i] += processor.right[i]
             }
         }
-        masterChain.process(current.masterFx, masterL, masterR, frames)
-        djEffects.process(current.dj, current.bpm, masterL, masterR, frames)
-        gate.process(gateBeats, current.bpm, songFrame, masterL, masterR, frames)
+        masterChain.process(liveDoc?.masterFx ?: current.masterFx, masterL, masterR, frames)
+        djEffects.process(liveDoc?.dj ?: current.dj, liveDoc?.bpm ?: current.bpm, masterL, masterR, frames)
+        gate.process(gateBeats, gateBpm.takeIf { it > 0.0 } ?: liveDoc?.bpm ?: current.bpm, songFrame, masterL, masterR, frames)
         if (!masterIsFinite(frames)) recoverMaster(frames)
-        val step = (current.masterGain - masterGain) / frames
+        val targetGain = liveDoc?.let { AudioMath.dbToGain(it.masterDb) } ?: current.masterGain
+        val step = (targetGain - masterGain) / frames
         for (i in 0 until frames) {
             masterGain += step
             masterL[i] *= masterGain
             masterR[i] *= masterGain
         }
-        masterGain = current.masterGain
+        masterGain = targetGain
         limiter.process(masterL, masterR, frames)
         var peak = 0f
         for (i in 0 until frames) peak = max(peak, max(abs(masterL[i]), abs(masterR[i])))

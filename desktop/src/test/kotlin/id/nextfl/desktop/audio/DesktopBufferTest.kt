@@ -16,6 +16,15 @@ class DesktopBufferTest {
     }
 
     @Test
+    fun djQueueStartsShorterThanMixingQueue() {
+        val normal = DesktopBuffer.startFrames(RATE)
+        val dj = DesktopBuffer.djStartFrames(RATE)
+        assertTrue(dj < normal)
+        assertTrue(dj >= RATE * 0.08)
+        assertEquals(0, dj % block)
+    }
+
+    @Test
     fun nearlyEmptyQueueGrowsBase() {
         assertEquals(block * 6, DesktopBuffer.grownBase(block * 5, queued = block - 1L, capacity = block * 32))
     }
