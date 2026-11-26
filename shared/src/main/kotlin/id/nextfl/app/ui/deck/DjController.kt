@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,6 +55,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private const val SCREEN_RATIO = 16f / 9f
+private const val SCREEN_BEZEL = 0.045f
 private const val PLAYHEAD_POLL_MS = 100L
 private const val OFF = 0.01f
 private val TRIM_RANGE = -24f..24f
@@ -319,12 +319,17 @@ private fun CenterSection(vm: EditorViewModel, state: EditorState, m: Metrics, m
     val images = rememberRotationImages(vm)
     val dj = state.doc.dj
     Column(modifier, verticalArrangement = Arrangement.spacedBy(m.gap)) {
-        // Live visual, export framing
-        Box(Modifier.fillMaxWidth().aspectRatio(SCREEN_RATIO)) {
-            Canvas(Modifier.fillMaxSize()) { drawScreenBezel(Rect(0f, 0f, size.width, size.height), m.corner.toPx() * 0.6f) }
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-                val inset = min(maxWidth, maxHeight) * 0.035f
-                Box(Modifier.fillMaxSize().padding(inset)) {
+        // Clipped 16:9 display, export framing
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val bezel = maxWidth * SCREEN_BEZEL
+            val display = maxWidth - bezel * 2
+            val corner = bezel * 0.3f
+            Box(Modifier.fillMaxWidth().height(display / SCREEN_RATIO + bezel * 2)) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val b = bezel.toPx()
+                    drawScreenHousing(Rect(0f, 0f, size.width, size.height), Rect(b, b, size.width - b, size.height - b), b * 1.2f)
+                }
+                Box(Modifier.fillMaxSize().padding(bezel).clip(RoundedCornerShape(corner))) {
                     VisualizerCanvas(vm, settings, images)
                     Canvas(Modifier.fillMaxSize()) { drawScreenGlass(Rect(0f, 0f, size.width, size.height)) }
                 }

@@ -423,25 +423,46 @@ fun DrawScope.drawSmallButton(rect: Rect, color: Color, lit: Boolean) {
     }
 }
 
-/** Bezel around [screenInner]. */
-fun DrawScope.drawScreenBezel(rect: Rect, corner: Float) {
-    drawSoftShadow(rect, corner, corner * 1.2f, 0.6f)
+/** Embedded tablet screen, raised housing. */
+fun DrawScope.drawScreenHousing(rect: Rect, display: Rect, corner: Float) {
+    val bezel = display.left - rect.left
+    drawSoftShadow(rect, corner, bezel * 0.9f, 0.75f)
     drawRoundRect(
-        brush = Brush.verticalGradient(listOf(Color(0xFF3A3D42), Color(0xFF1A1C1F), Color(0xFF0E0F11)), rect.top, rect.bottom),
+        brush = Brush.verticalGradient(listOf(Color(0xFF474B52), Color(0xFF26282C), Color(0xFF121315)), rect.top, rect.bottom),
         topLeft = rect.topLeft,
         size = rect.size,
         cornerRadius = CornerRadius(corner),
     )
-    val inner = screenInner(rect)
-    drawRect(Color.Black, inner.topLeft - Offset(2f, 2f), Size(inner.width + 4f, inner.height + 4f))
+    val edge = (bezel * 0.08f).coerceAtLeast(1f)
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.04f), Color.Black.copy(alpha = 0.6f)),
+            rect.top, rect.bottom,
+        ),
+        topLeft = Offset(rect.left + edge / 2, rect.top + edge / 2),
+        size = Size(rect.width - edge, rect.height - edge),
+        cornerRadius = CornerRadius(corner - edge / 2),
+        style = Stroke(edge),
+    )
+    // Black glass bezel
+    val rim = bezel * 0.32f
+    val glass = Rect(rect.left + rim, rect.top + rim, rect.right - rim, rect.bottom - rim)
+    drawRoundRect(Color(0xFF050607), glass.topLeft, glass.size, CornerRadius((corner - rim).coerceAtLeast(2f)))
+    drawRoundRect(
+        brush = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent, Color.White.copy(alpha = 0.03f)), glass.topLeft, glass.bottomRight),
+        topLeft = glass.topLeft,
+        size = glass.size,
+        cornerRadius = CornerRadius((corner - rim).coerceAtLeast(2f)),
+    )
+    // Front camera dot
+    val lens = Offset(glass.center.x, (glass.top + display.top) / 2)
+    val lensRadius = (display.top - glass.top) * 0.16f
+    drawCircle(Color(0xFF0B0F14), lensRadius, lens)
+    drawCircle(Color(0xFF1D3A5C).copy(alpha = 0.85f), lensRadius * 0.45f, lens)
+    drawRoundRect(Color.Black, display.topLeft - Offset(1.5f, 1.5f), Size(display.width + 3f, display.height + 3f), CornerRadius(bezel * 0.3f))
 }
 
-fun screenInner(rect: Rect): Rect {
-    val pad = min(rect.width, rect.height) * 0.035f
-    return Rect(rect.left + pad, rect.top + pad, rect.right - pad, rect.bottom - pad)
-}
-
-/** Glass reflection over screen content. */
+/** Glass reflection over display. */
 fun DrawScope.drawScreenGlass(inner: Rect) {
     val path = Path().apply {
         moveTo(inner.left, inner.top)
@@ -451,6 +472,8 @@ fun DrawScope.drawScreenGlass(inner: Rect) {
         close()
     }
     drawPath(path, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), inner.topLeft, inner.bottomCenter))
+    val shade = inner.height * 0.06f
+    drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent), inner.top, inner.top + shade), inner.topLeft, Size(inner.width, shade))
 }
 
 /** Segmented LED meter. */
