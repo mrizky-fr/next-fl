@@ -220,8 +220,9 @@ fun RoundDeckButton(label: String, color: Color, lit: Boolean, onClick: () -> Un
 @Composable
 private fun BoxLabel(label: String, color: Color) {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val fit = minOf(maxHeight.value * 0.34f, maxWidth.value / (label.length.coerceAtLeast(3) * 0.62f)).coerceIn(6f, 12f)
-        Text(label, style = printStyle(fit.sp, color).copy(fontWeight = FontWeight.Bold), maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
+        // Leaves margin inside frame
+        val fit = minOf(maxHeight.value * 0.26f, maxWidth.value / (label.length.coerceAtLeast(3) * 0.85f)).coerceIn(6f, 10f)
+        Text(label, style = printStyle(fit.sp, color).copy(fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp), maxLines = 1, softWrap = false, textAlign = TextAlign.Center)
     }
 }
 
