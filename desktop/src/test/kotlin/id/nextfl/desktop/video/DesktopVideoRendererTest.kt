@@ -6,9 +6,11 @@ import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.pcm.ArrayPcmSource
 import java.io.File
 import java.io.RandomAccessFile
+import java.lang.foreign.ValueLayout
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -39,11 +41,27 @@ class DesktopVideoRendererTest {
         assertFalse(renderer().render(file, onProgress = {}, isCancelled = { true }))
     }
 
-    private fun renderer(): DesktopVideoRenderer {
+    @Test
+    fun parallelFramesKeepOrderAndPixels() {
+        val single = frameHashes(workers = 1)
+        assertEquals((0 until FRAMES).toList(), single.map { it.first })
+        assertEquals(single, frameHashes(workers = 4))
+    }
+
+    // Index and pixel hash
+    private fun frameHashes(workers: Int): List<Pair<Int, Int>> {
+        val hashes = mutableListOf<Pair<Int, Int>>()
+        renderer(workers).renderFrames(FRAMES, isCancelled = { false }) { index, pixels, rowBytes ->
+            hashes += index to pixels.asSlice(0L, rowBytes * HEIGHT.toLong()).toArray(ValueLayout.JAVA_BYTE).contentHashCode()
+        }
+        return hashes
+    }
+
+    private fun renderer(workers: Int = 2): DesktopVideoRenderer {
         val rate = 44_100
         val samples = FloatArray(rate * 2) { (sin(2 * PI * 110 * it / rate) * 0.5).toFloat() }
         val settings = VisualSettings(title = "Uji Video", beatZoom = true, keyframePan = true)
-        return DesktopVideoRenderer(640, 360, ArrayPcmSource(samples, samples, rate), settings, emptyList(), emptyList(), typeface)
+        return DesktopVideoRenderer(640, HEIGHT, ArrayPcmSource(samples, samples, rate), settings, emptyList(), emptyList(), typeface, workers)
     }
 
     // Size plus type, 64-bit aware
@@ -60,5 +78,10 @@ class DesktopVideoRendererTest {
             position += size
         }
         types
+    }
+
+    private companion object {
+        const val FRAMES = 24
+        const val HEIGHT = 360
     }
 }

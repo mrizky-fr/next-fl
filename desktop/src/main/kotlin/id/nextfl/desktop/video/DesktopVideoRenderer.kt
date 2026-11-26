@@ -8,12 +8,20 @@ import id.nextfl.app.visual.PulseRingTemplate
 import id.nextfl.core.analysis.SpectrumAnalyzer
 import id.nextfl.core.model.VisualSettings
 import id.nextfl.core.pcm.PcmSource
+import org.jetbrains.skia.Picture
+import org.jetbrains.skia.PictureRecorder
+import org.jetbrains.skia.Rect
 import java.io.File
 import java.io.IOException
 import java.lang.foreign.MemorySegment
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
+import org.jetbrains.skia.Canvas as SkCanvas
 
 /** Template visuals plus mix MP4. */
 internal class DesktopVideoRenderer(
@@ -24,6 +32,7 @@ internal class DesktopVideoRenderer(
     private val backgrounds: List<Bitmap>,
     private val logos: List<Bitmap>,
     private val typeface: Typeface,
+    private val workers: Int = WORKERS,
 ) {
     private val analyzer = SpectrumAnalyzer(audio.sampleRate)
     private val window = FloatArray(analyzer.fftSize)
@@ -35,46 +44,76 @@ internal class DesktopVideoRenderer(
     /** Returns false when cancelled. */
     fun render(output: File, onProgress: (Float) -> Unit, isCancelled: () -> Boolean): Boolean {
         if (audio.frames <= 0) throw IOException("Mixdown audio kosong")
-        val frame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixmap = frame.skia.peekPixels() ?: throw IOException("Frame video tidak bisa dibaca")
+        val total = ceil(audio.durationSeconds * FPS).toInt()
+        MfSinkWriter(output, width, height, FPS, bitrate(), audio.sampleRate, AAC_BYTES_PER_SECOND).use { writer ->
+            val done = renderFrames(total, isCancelled) { index, pixels, rowBytes ->
+                val start = frameTime(index)
+                writer.writeVideo(pixels, rowBytes, start, frameTime(index + 1) - start)
+                writeAudio(writer, ((index + 1L) * audio.sampleRate / FPS).toInt())
+                onProgress((index + 1f) / total)
+            }
+            if (!done) return false
+            writeAudio(writer, audio.frames)
+            writer.finish()
+        }
+        return true
+    }
+
+    /** Records in order, rasters in parallel. */
+    internal fun renderFrames(total: Int, isCancelled: () -> Boolean, onFrame: (Int, MemorySegment, Int) -> Unit): Boolean {
+        val template = PulseRingTemplate(typeface).apply { setImages(backgrounds, logos) }
+        val pool = Executors.newFixedThreadPool(workers) { Thread(it, "video-raster").apply { isDaemon = true } }
+        val recorder = PictureRecorder()
+        val bounds = Rect.makeWH(width.toFloat(), height.toFloat())
+        val frames = mutableListOf<Frame>()
+        val free = ArrayDeque<Frame>()
+        val pending = ArrayDeque<Job>()
         try {
-            // N32 on Windows is BGRA
-            val pixels = MemorySegment.ofAddress(pixmap.addr).reinterpret(pixmap.rowBytes.toLong() * height)
-            MfSinkWriter(output, width, height, FPS, bitrate(), audio.sampleRate, AAC_BYTES_PER_SECOND).use { writer ->
-                if (!renderFrames(writer, Canvas(frame), pixels, pixmap.rowBytes, onProgress, isCancelled)) return false
-                writeAudio(writer, audio.frames)
-                writer.finish()
+            for (index in 0 until total) {
+                if (isCancelled()) return false
+                val picture = record(recorder, bounds, template, index)
+                if (pending.size >= workers * IN_FLIGHT_PER_WORKER) free.addLast(emit(pending, onFrame))
+                val frame = free.removeFirstOrNull() ?: Frame(width, height).also(frames::add)
+                pending.addLast(Job(index, picture, frame, pool.submit { frame.draw(picture) }))
+            }
+            while (pending.isNotEmpty()) {
+                if (isCancelled()) return false
+                emit(pending, onFrame)
             }
             return true
         } finally {
-            pixmap.close()
-            frame.recycle()
+            pool.shutdownNow()
+            // Workers must stop first
+            if (pool.awaitTermination(1, TimeUnit.MINUTES)) {
+                pending.forEach { it.picture.close() }
+                frames.forEach(Frame::close)
+            }
+            recorder.close()
         }
     }
 
-    private fun renderFrames(
-        writer: MfSinkWriter,
-        canvas: Canvas,
-        pixels: MemorySegment,
-        rowBytes: Int,
-        onProgress: (Float) -> Unit,
-        isCancelled: () -> Boolean,
-    ): Boolean {
-        val template = PulseRingTemplate(typeface).apply { setImages(backgrounds, logos) }
-        val total = ceil(audio.durationSeconds * FPS).toInt()
-        val dt = 1f / FPS
-        for (index in 0 until total) {
-            if (isCancelled()) return false
-            val sample = (index.toLong() * audio.sampleRate / FPS).toInt()
-            val analysis = analyzer.analyze(fillWindow(sample + lookaheadFrames), dt, settings.sensitivity, settings.beatLow, settings.beatMid, settings.beatHigh)
-            canvas.drawColor(Color.BLACK)
-            template.draw(canvas, width, height, analysis, dt, settings)
-            val start = frameTime(index)
-            writer.writeVideo(pixels, rowBytes, start, frameTime(index + 1) - start)
-            writeAudio(writer, ((index + 1L) * audio.sampleRate / FPS).toInt())
-            onProgress((index + 1f) / total)
+    // Template state advances here
+    private fun record(recorder: PictureRecorder, bounds: Rect, template: PulseRingTemplate, index: Int): Picture {
+        val canvas = Canvas(recorder.beginRecording(bounds))
+        val sample = (index.toLong() * audio.sampleRate / FPS).toInt()
+        val analysis = analyzer.analyze(fillWindow(sample + lookaheadFrames), DT, settings.sensitivity, settings.beatLow, settings.beatMid, settings.beatHigh)
+        canvas.drawColor(Color.BLACK)
+        template.draw(canvas, width, height, analysis, DT, settings)
+        return recorder.finishRecordingAsPicture()
+    }
+
+    // Oldest frame, returns its bitmap
+    private fun emit(pending: ArrayDeque<Job>, onFrame: (Int, MemorySegment, Int) -> Unit): Frame {
+        val job = pending.first()
+        try {
+            job.task.get()
+        } catch (error: ExecutionException) {
+            throw error.cause ?: error
         }
-        return true
+        pending.removeFirst()
+        job.picture.close()
+        onFrame(job.index, job.frame.pixels, job.frame.rowBytes)
+        return job.frame
     }
 
     // Mono mix like live tap
@@ -117,8 +156,36 @@ internal class DesktopVideoRenderer(
 
     private fun bitrate(): Int = (width.toLong() * height * FPS * BITS_PER_PIXEL).toInt()
 
+    private class Job(val index: Int, val picture: Picture, val frame: Frame, val task: Future<*>)
+
+    /** Pooled raster target. */
+    private class Frame(width: Int, height: Int) : AutoCloseable {
+        private val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        private val canvas = SkCanvas(bitmap.skia)
+        private val pixmap = bitmap.skia.peekPixels() ?: throw IOException("Frame video tidak bisa dibaca")
+        val rowBytes: Int = pixmap.rowBytes
+
+        // N32 on Windows is BGRA
+        val pixels: MemorySegment = MemorySegment.ofAddress(pixmap.addr).reinterpret(rowBytes.toLong() * height)
+
+        fun draw(picture: Picture) {
+            canvas.drawPicture(picture)
+        }
+
+        override fun close() {
+            canvas.close()
+            pixmap.close()
+            bitmap.recycle()
+        }
+    }
+
     companion object {
         const val FPS = 30
+        private const val DT = 1f / FPS
+        private const val IN_FLIGHT_PER_WORKER = 2
+
+        // Leave cores for encoder
+        private val WORKERS = (Runtime.getRuntime().availableProcessors() - 2).coerceAtLeast(1)
         private const val BITS_PER_PIXEL = 0.12
 
         // 192 kbps AAC
